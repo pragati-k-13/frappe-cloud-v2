@@ -89,8 +89,7 @@
             <section class="rounded-xl border border-outline-gray-2 bg-surface-white p-5 pt-4">
               <div class="flex items-center justify-between gap-3">
                 <h2 class="text-base font-semibold text-ink-gray-8">Subscriptions</h2>
-                <Button v-if="hasActive" variant="ghost" size="sm" label="Stop all billing" @click="stopAllOpen = true" />
-                <Button v-else-if="store.allServers.some((s) => s.status === 'suspended')" variant="ghost" size="sm" label="Resume all" @click="resumeAll" />
+                <Button v-if="anySuspended" variant="ghost" size="sm" label="Resume all" @click="resumeAll" />
               </div>
               <div class="mt-2 divide-y divide-outline-gray-1">
                 <div v-for="srv in store.allServers" :key="srv.id" class="flex items-center justify-between gap-3 py-3">
@@ -180,6 +179,17 @@
                 <div class="flex justify-between gap-3"><dt class="text-ink-gray-5 text-p-sm">Invoice language</dt><dd class="text-ink-gray-8 text-p-sm">{{ langLabel(store.billingProfile.invoiceLanguage) }}</dd></div>
                 <div class="flex justify-between gap-3"><dt class="text-ink-gray-5 text-p-sm">Billing address</dt><dd class="max-w-[60%] truncate text-ink-gray-8 text-p-sm">{{ store.billingProfile.address || 'Not added' }}</dd></div>
               </dl>
+            </section>
+
+            <!-- Cancel subscription — its own clearly-labelled section, no dark patterns -->
+            <section v-if="store.allServers.length" class="rounded-xl border border-outline-red-1 bg-surface-red-1 p-5">
+              <div class="flex flex-wrap items-center justify-between gap-3">
+                <div class="min-w-0">
+                  <h2 class="text-base font-semibold text-ink-red-4">Cancel subscription</h2>
+                  <p class="mt-0.5 text-sm text-ink-red-3">Suspend your servers to stop being charged. This can't be undone.</p>
+                </div>
+                <Button variant="solid" theme="red" label="Cancel subscription" @click="cancelOpen = true" />
+              </div>
             </section>
           </div>
         </div>
@@ -365,14 +375,7 @@
       </template>
     </Dialog>
 
-    <ConfirmDialog
-      v-model:open="stopAllOpen"
-      theme="red"
-      title="Stop billing on all servers?"
-      message="Every server is suspended and its sites go offline until you resume. You won't be charged while they're stopped — nothing is deleted."
-      confirm-label="Stop all billing"
-      @confirm="confirmStopAll"
-    />
+    <CancelSubscriptionDialog v-model:open="cancelOpen" />
 
     <AddCardDialog v-model:open="addCardOpen" />
   </CentralShell>
@@ -382,8 +385,8 @@
 import { computed, reactive, ref } from 'vue'
 import { Alert, Badge, Button, Dialog, Dropdown, FormControl, Switch, Tooltip, toast } from 'frappe-ui'
 import AddCardDialog from '../../components/AddCardDialog.vue'
+import CancelSubscriptionDialog from '../../components/CancelSubscriptionDialog.vue'
 import CentralShell from '../../components/CentralShell.vue'
-import ConfirmDialog from '../../components/ConfirmDialog.vue'
 import { TAX_REGION_OPTIONS, taxRegionByCode } from '../../data/tax'
 import { CYCLE_DAYS, useCloudStore } from '../../stores/cloud'
 import { inr, usd } from '../../utils/format'
@@ -425,18 +428,14 @@ function total(inv) {
 }
 
 // — Subscriptions
-const hasActive = computed(() => store.allServers.some((s) => s.status !== 'suspended'))
-
-// — Stop / resume all
-const stopAllOpen = ref(false)
-function confirmStopAll() {
-  store.allServers.forEach((s) => store.setServerSuspended(s.id, true))
-  toast.success('Billing stopped on all servers')
-}
+const anySuspended = computed(() => store.allServers.some((s) => s.status === 'suspended'))
 function resumeAll() {
   store.allServers.forEach((s) => store.setServerSuspended(s.id, false))
   toast.success('Billing resumed')
 }
+
+// — Cancel subscription (delete servers)
+const cancelOpen = ref(false)
 
 // — Payment methods
 const pmOpen = ref(false)

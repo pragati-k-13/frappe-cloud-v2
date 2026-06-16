@@ -15,6 +15,7 @@ declare module 'vue' {
     AddCardDialog: typeof import('./src/components/AddCardDialog.vue')['default']
     AddDomainDialog: typeof import('./src/components/AddDomainDialog.vue')['default']
     AppIcon: typeof import('./src/components/AppIcon.vue')['default']
+    CancelSubscriptionDialog: typeof import('./src/components/CancelSubscriptionDialog.vue')['default']
     CentralShell: typeof import('./src/components/CentralShell.vue')['default']
     ChangeVersionDialog: typeof import('./src/components/ChangeVersionDialog.vue')['default']
     ConfirmDialog: typeof import('./src/components/ConfirmDialog.vue')['default']
