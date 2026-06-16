@@ -10,29 +10,40 @@
           </div>
 
           <Alert v-if="store.creditExpired" theme="red" class="mt-5" title="Your credit ran out, so your sites are paused" :dismissible="false">
-            <template #description>Nothing is deleted — add a card and they're back in seconds, exactly as they were.</template>
+            <template #description>Add a card to bring them back — nothing was deleted.</template>
             <template #footer><Button variant="solid" size="sm" label="Add a card" @click="addCardOpen = true" /></template>
           </Alert>
 
-          <!-- Dunning — an unpaid/overdue invoice is the single most urgent thing here -->
+          <!-- Dunning — an unpaid/overdue invoice is the single most urgent thing
+               here. Settlement is wallet-first, so the lead fix is topping up
+               credit; a declined card (if that's the cause) gets its own alert. -->
           <Alert v-if="overdueInvoice" theme="red" class="mt-5" :title="`Invoice ${overdueInvoice.number} is overdue`" :dismissible="false">
             <template #description>
-              {{ inr(total(overdueInvoice)) }} was due on {{ overdueInvoice.dueDate }}. Pay now to avoid your servers being suspended.
+              {{ inr(total(overdueInvoice)) }} wasn't covered by your wallet credit. Add credit to settle it and avoid suspension.
             </template>
             <template #footer>
               <div class="flex gap-2">
-                <Button variant="solid" size="sm" label="Pay now" @click="payInvoice(overdueInvoice)" />
+                <Button variant="solid" size="sm" label="Add credit" @click="creditOpen = true" />
                 <Button variant="outline" size="sm" label="View invoice" @click="openPanel = { type: 'invoice', data: overdueInvoice }" />
               </div>
             </template>
           </Alert>
 
-          <!-- A declined primary method blocks every charge, including auto-recharge.
-               Independent v-if (not else-if) so it isn't hidden by the overdue alert. -->
-          <Alert v-if="declinedMethod" theme="yellow" class="mt-5" title="Your primary payment method was declined" :dismissible="false">
+          <!-- Primary declined but a backup still works → nothing actually broke.
+               We charged the backup; this is just a nudge to fix the primary.
+               Independent v-if (not else-if) so it isn't hidden by other alerts. -->
+          <Alert v-if="declinedPrimary && backupMethod" theme="blue" class="mt-5" title="Primary payment method declined" :dismissible="false">
             <template #description>
-              We couldn't charge {{ declinedMethod.label }} {{ declinedMethod.detail }}.
-              {{ store.autoRecharge ? 'Auto-recharge is paused until it’s fixed.' : 'Update it to keep things running.' }}
+              {{ declinedPrimary.label }} {{ declinedPrimary.detail }} was declined, so we charged your backup {{ backupMethod.label }} instead. Update it when you can.
+            </template>
+            <template #footer><Button variant="outline" size="sm" label="Update payment method" @click="openPm" /></template>
+          </Alert>
+
+          <!-- Nothing on file can be charged → auto-recharge is blocked and
+               servers will be suspended. This is the real emergency. -->
+          <Alert v-if="noWorkingMethod" theme="red" class="mt-5" title="No working payment method" :dismissible="false">
+            <template #description>
+              Every method was declined. Add a working one to avoid suspension.
             </template>
             <template #footer><Button variant="solid" size="sm" label="Update payment method" @click="openPm" /></template>
           </Alert>
@@ -42,13 +53,13 @@
             <div class="grid gap-4 sm:grid-cols-2">
               <!-- Estimated this cycle -->
               <section class="rounded-xl border border-outline-gray-2 bg-surface-white p-5">
-                <div class="flex items-center justify-between">
+                <div class="flex items-center justify-between gap-2">
                   <span class="text-sm text-ink-gray-5">Estimated this cycle</span>
-                  <button class="text-xs text-ink-gray-5 underline-offset-2 hover:text-ink-gray-7 hover:underline" @click="budgetOpen = true">Set alert</button>
+                  <Button variant="ghost" size="xs" class="-mr-1 shrink-0" :class="store.budgetAlert ? '!text-ink-amber-3' : ''" :label="store.budgetAlert ? `Alert at ${inr(store.budgetAlert)}` : 'Set alert'" @click="openBudget" />
                 </div>
                 <div class="mt-1 text-2xl font-semibold tabular-nums text-ink-gray-9">{{ inr(store.estimatedThisCycle) }}</div>
                 <div class="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
-                  <span class="text-ink-gray-5">Bills on {{ billingDueDate }}</span>
+                  <span class="text-ink-gray-5">Day {{ daysElapsed }} of {{ cycleDays }} · bills {{ billingDueDate }}</span>
                   <span v-if="store.estimateDeltaPct" class="inline-flex items-center gap-0.5 font-medium" :class="deltaUp ? 'text-ink-amber-3' : 'text-ink-green-3'">
                     <span class="size-3" :class="deltaUp ? 'lucide-arrow-up' : 'lucide-arrow-down'" />
                     {{ Math.abs(store.estimateDeltaPct) }}% vs last month
@@ -56,41 +67,47 @@
                 </div>
               </section>
 
-              <!-- Wallet — clickable → history panel -->
+              <!-- Wallet — the title and chevron open the history panel (no longer
+                   a whole-tile button, so the "Add" inside isn't a nested control). -->
               <div
-                role="button"
-                tabindex="0"
-                class="cursor-pointer rounded-xl border bg-surface-white p-5 text-left transition-colors"
-                :class="openPanel?.type === 'wallet' ? 'border-outline-gray-4 ring-1 ring-outline-gray-4' : 'border-outline-gray-2 hover:border-outline-gray-3'"
-                @click="openPanel = { type: 'wallet' }"
-                @keydown.enter="openPanel = { type: 'wallet' }"
+                class="rounded-xl border bg-surface-white p-5 transition-colors"
+                :class="openPanel?.type === 'wallet' ? 'border-outline-gray-4 ring-1 ring-outline-gray-4' : 'border-outline-gray-2'"
               >
                 <div class="flex items-center justify-between">
-                  <span class="text-sm text-ink-gray-5">Wallet</span>
-                  <span class="lucide-chevron-right size-4 text-ink-gray-4" />
+                  <button class="text-sm text-ink-gray-5 transition-colors hover:text-ink-gray-7" @click="openPanel = { type: 'wallet' }">Wallet</button>
+                  <button class="grid size-6 place-items-center rounded text-ink-gray-4 hover:bg-surface-gray-2 hover:text-ink-gray-6" aria-label="Open wallet history" @click="openPanel = { type: 'wallet' }">
+                    <span class="lucide-chevron-right size-4" />
+                  </button>
                 </div>
                 <div class="mt-1 text-2xl font-semibold tabular-nums text-ink-gray-9">{{ inr(store.walletBalance) }}</div>
                 <div class="mt-1.5 flex items-center justify-between gap-2">
-                  <span class="text-xs text-ink-gray-5">Applied to your monthly invoice</span>
-                  <Button variant="subtle" size="sm" label="Add" icon-left="lucide-plus" @click.stop="creditOpen = true" />
+                  <span class="text-xs text-ink-gray-5">Applied to your invoice first</span>
+                  <Button variant="subtle" size="sm" label="Add" icon-left="lucide-plus" @click="creditOpen = true" />
                 </div>
+                <!-- Auto-recharge state surfaced here; full controls live in the panel. -->
+                <button class="mt-2 flex items-center gap-1.5 text-xs transition-colors hover:text-ink-gray-8" :class="store.autoRecharge ? 'text-ink-gray-6' : 'text-ink-gray-5'" @click="openPanel = { type: 'wallet' }">
+                  <span class="lucide-zap size-3 shrink-0" :class="store.autoRecharge ? 'text-ink-green-3' : 'text-ink-gray-4'" />
+                  <span v-if="store.autoRecharge">Auto-recharge on · below {{ inr(store.rechargeThreshold) }}, add {{ inr(store.rechargeAmount) }}</span>
+                  <span v-else>Auto-recharge off</span>
+                </button>
                 <p v-if="walletAtRisk" class="mt-2 flex items-center gap-1 text-xs text-ink-amber-3">
                   <span class="lucide-triangle-alert size-3 shrink-0" />
-                  Won't cover the {{ billingDueDate }} invoice ({{ inr(store.estimatedThisCycle) }}).
+                  Won't cover the {{ inr(store.estimatedThisCycle) }} invoice.
                 </p>
               </div>
             </div>
 
             <!-- Payment methods -->
             <section class="rounded-xl border border-outline-gray-2 bg-surface-white p-5 pt-4">
-              <div class="flex items-center justify-between">
+              <div class="flex items-center justify-between gap-3">
                 <div class="flex items-center gap-1.5">
                   <h2 class="text-base font-semibold text-ink-gray-8">Payment methods</h2>
-                  <Tooltip text="If the primary fails, we automatically try the next one in line.">
+                  <Tooltip text="The primary is used first. If it fails, your backup is tried automatically.">
                     <span class="lucide-info size-3.5 text-ink-gray-4" />
                   </Tooltip>
                 </div>
-                <Button variant="ghost" size="sm" icon="lucide-plus" aria-label="Add payment method" @click="openPm" />
+                <!-- Only one primary + one backup: hide "add" once both exist. -->
+                <Button v-if="store.paymentMethods.length < 2" variant="ghost" size="sm" icon="lucide-plus" :aria-label="store.paymentMethods.length ? 'Add backup method' : 'Add payment method'" @click="openPm" />
               </div>
 
               <div v-if="store.paymentMethods.length" class="mt-2 divide-y divide-outline-gray-1">
@@ -100,8 +117,8 @@
                   </span>
                   <div class="min-w-0 flex-1">
                     <div class="truncate text-sm font-medium text-ink-gray-9">{{ pm.label }}</div>
-                    <div class="text-p-sm" :class="pm.status === 'declined' ? 'text-ink-red-4' : 'text-ink-gray-5'">
-                      {{ pm.status === 'declined' ? `${pm.detail} · declined` : pm.detail }}
+                    <div class="text-p-sm">
+                      <span :class="pm.status === 'declined' ? 'text-ink-red-4' : 'text-ink-gray-5'">{{ pm.detail }}<template v-if="pm.status === 'declined'"> · declined</template></span><template v-if="pm.expiry && pm.status !== 'declined'"><span class="text-ink-gray-5"> · </span><span :class="expiryClass(pm)">{{ expiryLabel(pm) }}</span></template>
                     </div>
                   </div>
                   <Badge v-if="pm.primary" theme="green" variant="subtle" label="Primary" />
@@ -111,30 +128,29 @@
                   </Dropdown>
                 </div>
               </div>
-              <p v-else class="mt-2 text-sm text-ink-gray-5">No payment method yet — add one to keep things running.</p>
+              <p v-else class="mt-2 text-sm text-ink-gray-5">No payment method yet.</p>
             </section>
 
             <!-- Subscriptions (one per server) -->
             <section class="rounded-xl border border-outline-gray-2 bg-surface-white p-5 pt-4">
-              <div class="flex items-center justify-between gap-3">
-                <h2 class="text-base font-semibold text-ink-gray-8">Subscriptions</h2>
-                <Button v-if="anySuspended" variant="ghost" size="sm" label="Resume all" @click="resumeAll" />
-              </div>
+              <h2 class="text-base font-semibold text-ink-gray-8">Subscriptions</h2>
               <div class="mt-2 divide-y divide-outline-gray-1">
                 <div v-for="srv in store.allServers" :key="srv.id" class="flex items-center justify-between gap-3 py-3">
-                  <div class="flex min-w-0 items-center gap-2.5">
+                  <button class="group flex min-w-0 items-center gap-2.5 text-left" @click="goServer(srv.id)">
                     <span class="lucide-server size-4 shrink-0 text-ink-gray-5" />
                     <div class="min-w-0">
                       <div class="flex items-center gap-2">
-                        <span class="truncate text-base font-medium text-ink-gray-9">{{ srv.name }}</span>
-                        <span v-if="srv.status === 'suspended'" class="shrink-0 text-p-xs text-ink-amber-3">Stopped</span>
+                        <span class="truncate text-base font-medium text-ink-gray-9 transition-colors group-hover:text-ink-gray-7">{{ srv.name }}</span>
+                        <span v-if="srv.status === 'suspended'" class="shrink-0 text-p-xs text-ink-amber-3">Suspended</span>
                       </div>
                       <div class="truncate text-p-sm text-ink-gray-5">{{ store.planOf(srv).name }} · {{ store.regionOf(srv).name }} ({{ store.regionOf(srv).provider }})</div>
                     </div>
-                  </div>
-                  <div class="shrink-0 text-right">
-                    <div class="text-base font-medium tabular-nums" :class="srv.status === 'suspended' ? 'text-ink-gray-4 line-through' : 'text-ink-gray-9'">{{ inr(store.monthlyPriceOf(srv)) }}/mo</div>
-                    <div class="text-p-sm tabular-nums text-ink-gray-5">{{ daysElapsed }} of {{ cycleDays }} days · {{ inr(store.perDayOf(srv)) }}/day</div>
+                  </button>
+                  <div class="flex shrink-0 items-center gap-3">
+                    <span class="text-base font-medium tabular-nums" :class="srv.status === 'suspended' ? 'text-ink-gray-4 line-through' : 'text-ink-gray-9'">{{ inr(store.monthlyPriceOf(srv)) }}/mo</span>
+                    <Dropdown :options="subMenu(srv)" placement="bottom-end">
+                      <button class="rounded p-1 text-ink-gray-5 hover:bg-surface-gray-2" :aria-label="`Actions for ${srv.name}`"><span class="lucide-ellipsis size-4" /></button>
+                    </Dropdown>
                   </div>
                 </div>
               </div>
@@ -148,7 +164,7 @@
               </div>
               <div v-if="store.invoices.length" class="mt-2 divide-y divide-outline-gray-1">
                 <button
-                  v-for="inv in store.invoices"
+                  v-for="inv in visibleInvoices"
                   :key="inv.number"
                   class="flex w-full items-center justify-between gap-3 rounded-lg px-3 py-2.5 text-left text-sm transition-colors"
                   :class="openPanel?.type === 'invoice' && openPanel.data.number === inv.number ? 'bg-surface-gray-2' : 'hover:bg-surface-gray-1'"
@@ -166,17 +182,21 @@
                     <span class="lucide-chevron-right size-4 text-ink-gray-4" />
                   </div>
                 </button>
+                <!-- Only appears past the first 5 invoices. -->
+                <button v-if="store.invoices.length > 5" class="w-full rounded-lg py-2 text-center text-sm text-ink-gray-6 transition-colors hover:bg-surface-gray-1" @click="showAllInvoices = !showAllInvoices">
+                  {{ showAllInvoices ? 'Show less' : `Load ${store.invoices.length - 5} more` }}
+                </button>
               </div>
-              <p v-else class="mt-2 text-sm text-ink-gray-5">No invoices yet — your first one arrives at the end of the cycle.</p>
+              <p v-else class="mt-2 text-sm text-ink-gray-5">No invoices yet.</p>
             </section>
 
-            <!-- Marketplace payouts -->
-            <section class="rounded-xl border border-outline-gray-2 bg-surface-white p-5">
+            <!-- Marketplace payouts — only relevant to app publishers, so it's
+                 hidden unless there are earnings or a payout account set up. -->
+            <section v-if="store.payoutBalance > 0 || store.payoutAccount" class="rounded-xl border border-outline-gray-2 bg-surface-white p-5">
               <div class="flex items-center gap-2">
                 <h2 class="text-base font-semibold text-ink-gray-8">Marketplace payouts</h2>
-                <Badge theme="gray" variant="subtle" label="For app publishers" />
+                <Badge theme="gray" variant="subtle" label="Paid in USD" />
               </div>
-              <p class="mt-1 text-sm text-ink-gray-5">Earnings from apps you publish on the marketplace.</p>
               <div class="mt-3 flex items-center justify-between gap-3">
                 <div class="flex items-baseline gap-2">
                   <span class="text-xl font-semibold text-ink-gray-9">{{ usd(store.payoutBalance) }}</span>
@@ -187,7 +207,7 @@
               </div>
               <p v-if="store.payoutBalance > 0 && !store.payoutAccount" class="mt-2 flex items-center gap-1 text-xs text-ink-amber-3">
                 <span class="lucide-triangle-alert size-3 shrink-0" />
-                Add a bank account before you can withdraw your earnings.
+                Add a bank account to withdraw your earnings.
               </p>
             </section>
 
@@ -195,15 +215,15 @@
             <section class="rounded-xl border border-outline-gray-2 bg-surface-white p-5 pt-4">
               <div class="flex items-center justify-between">
                 <h2 class="text-base font-semibold text-ink-gray-8">Tax &amp; compliance</h2>
-                <Button variant="ghost" size="sm" icon="lucide-pencil" aria-label="Edit tax & compliance" @click="openTax" />
+                <button class="rounded p-1 text-ink-gray-5 transition-colors hover:bg-surface-gray-2 hover:text-ink-gray-7" aria-label="Edit tax & compliance" @click="openTax"><span class="lucide-pencil size-3.5" /></button>
               </div>
               <dl class="mt-3 space-y-1.5 text-p-sm">
                 <div class="flex justify-between gap-3"><dt class="text-ink-gray-5">Tax region</dt><dd class="text-ink-gray-8 text-p-sm">{{ taxRegion.country }}</dd></div>
                 <div class="flex justify-between gap-3"><dt class="text-ink-gray-5 text-p-sm">{{ taxRegion.idLabel }}</dt><dd class="text-p-sm" :class="taxMissing ? 'text-ink-amber-3' : 'text-ink-gray-8'">{{ store.billingProfile.taxValue || 'Not added' }}</dd></div>
               </dl>
-              <button v-if="taxMissing" class="mt-2 flex items-center gap-1 text-xs text-ink-amber-3 underline-offset-2 hover:underline" @click="openTax">
+              <button v-if="taxMissing" class="mt-2 flex items-center gap-1 text-xs text-ink-amber-3 transition-colors hover:text-ink-amber-4" @click="openTax">
                 <span class="lucide-triangle-alert size-3 shrink-0" />
-                Add your {{ taxRegion.idLabel }} so invoices are tax-compliant in {{ taxRegion.country }}.
+                Add your {{ taxRegion.idLabel }} to make invoices tax-compliant.
               </button>
             </section>
 
@@ -211,7 +231,7 @@
             <section class="rounded-xl border border-outline-gray-2 bg-surface-white p-5 pt-4">
               <div class="flex items-center justify-between">
                 <h2 class="text-base font-semibold text-ink-gray-8">Contact &amp; address</h2>
-                <Button variant="ghost" size="sm" icon="lucide-pencil" aria-label="Edit contact & address" @click="openDetails" />
+                <button class="rounded p-1 text-ink-gray-5 transition-colors hover:bg-surface-gray-2 hover:text-ink-gray-7" aria-label="Edit contact & address" @click="openDetails"><span class="lucide-pencil size-3.5" /></button>
               </div>
               <dl class="mt-3 space-y-1.5 text-p-sm">
                 <div class="flex justify-between gap-3"><dt class="text-ink-gray-5 text-p-sm">Billing email</dt><dd class="text-p-sm" :class="store.billingProfile.emailBounced ? 'text-ink-red-4' : 'text-ink-gray-8'">{{ store.billingProfile.billingEmail || 'Not added' }}{{ store.billingProfile.emailBounced ? ' · bouncing' : '' }}</dd></div>
@@ -219,20 +239,29 @@
                 <div class="flex justify-between gap-3"><dt class="text-ink-gray-5 text-p-sm">Invoice language</dt><dd class="text-ink-gray-8 text-p-sm">{{ langLabel(store.billingProfile.invoiceLanguage) }}</dd></div>
                 <div class="flex justify-between gap-3"><dt class="text-ink-gray-5 text-p-sm">Billing address</dt><dd class="max-w-[60%] truncate text-ink-gray-8 text-p-sm">{{ store.billingProfile.address || 'Not added' }}</dd></div>
               </dl>
-              <button v-if="store.billingProfile.emailBounced" class="mt-2 flex items-center gap-1 text-xs text-ink-red-4 underline-offset-2 hover:underline" @click="openDetails">
+              <button v-if="store.billingProfile.emailBounced" class="mt-2 flex items-center gap-1 text-xs text-ink-red-3 transition-colors hover:text-ink-red-4" @click="openDetails">
                 <span class="lucide-triangle-alert size-3 shrink-0" />
                 Invoices are bouncing back — update your billing email.
               </button>
             </section>
 
-            <!-- Cancel subscription — its own clearly-labelled section, no dark patterns -->
-            <section v-if="store.allServers.length" class="rounded-xl border border-outline-red-1 bg-surface-red-1 p-5">
+            <!-- Stop / resume billing — the single global switch. Suspends every
+                 server (reversible); nothing is deleted, so it stays calm — a plain
+                 card with a single subtle red action, not an alarming red card. -->
+            <section v-if="store.allServers.length" class="rounded-xl border border-outline-gray-2 bg-surface-white p-5">
               <div class="flex flex-wrap items-center justify-between gap-3">
                 <div class="min-w-0">
-                  <h2 class="text-base font-semibold text-ink-red-4">Cancel subscription</h2>
-                  <p class="mt-0.5 text-sm text-ink-red-3">Suspend your servers to stop being charged. This can't be undone.</p>
+                  <template v-if="allSuspended">
+                    <h2 class="text-base font-semibold text-ink-gray-8">Billing stopped</h2>
+                    <p class="mt-0.5 text-sm text-ink-gray-5">All servers suspended. Resume to bring your sites back online.</p>
+                  </template>
+                  <template v-else>
+                    <h2 class="text-base font-semibold text-ink-gray-8">Stop billing</h2>
+                    <p class="mt-0.5 text-sm text-ink-gray-5">Suspend all servers to pause charges. Sites go offline; nothing is deleted.</p>
+                  </template>
                 </div>
-                <Button variant="solid" theme="red" label="Cancel subscription" @click="cancelOpen = true" />
+                <Button v-if="allSuspended" variant="solid" theme="green" label="Resume billing" @click="resumeBilling" />
+                <Button v-else variant="subtle" theme="red" label="Stop billing" @click="cancelOpen = true" />
               </div>
             </section>
           </div>
@@ -286,11 +315,16 @@
                 <div class="flex justify-between"><dt class="text-ink-gray-5">GST (18%)</dt><dd class="tabular-nums text-ink-gray-8">{{ inr(tax(openPanel.data)) }}</dd></div>
                 <div v-if="openPanel.data.credits" class="flex justify-between"><dt class="text-ink-green-3">Credits applied</dt><dd class="tabular-nums text-ink-green-3">−{{ inr(openPanel.data.credits) }}</dd></div>
                 <div class="flex justify-between border-t border-outline-gray-1 pt-1.5 font-semibold"><dt class="text-ink-gray-8">Total</dt><dd class="tabular-nums text-ink-gray-9">{{ inr(total(openPanel.data)) }}</dd></div>
+                <!-- Wallet credit is auto-applied on payment, so preview it here. -->
+                <template v-if="openPanel.data.status === 'Unpaid' && walletApplyPreview > 0">
+                  <div class="flex justify-between"><dt class="text-ink-green-3">Wallet credit (applied on payment)</dt><dd class="tabular-nums text-ink-green-3">−{{ inr(walletApplyPreview) }}</dd></div>
+                  <div class="flex justify-between font-semibold"><dt class="text-ink-gray-8">You'll pay</dt><dd class="tabular-nums text-ink-gray-9">{{ inr(total(openPanel.data) - walletApplyPreview) }}</dd></div>
+                </template>
               </dl>
             </div>
 
             <div class="border-t border-outline-gray-2 p-4">
-              <Button v-if="openPanel.data.status === 'Unpaid'" variant="solid" theme="red" class="mb-2 w-full" :label="`Pay ${inr(total(openPanel.data))} now`" icon-left="lucide-credit-card" @click="payInvoice(openPanel.data)" />
+              <Button v-if="openPanel.data.status === 'Unpaid'" variant="solid" theme="red" class="mb-2 w-full" :label="`Pay ${inr(total(openPanel.data) - walletApplyPreview)} now`" icon-left="lucide-credit-card" @click="payInvoice(openPanel.data)" />
               <div class="flex gap-2">
                 <Button variant="subtle" class="flex-1" label="Email invoice" icon-left="lucide-mail" @click="emailInvoice" />
                 <Button variant="subtle" class="flex-1" label="Download PDF" icon-left="lucide-download" @click="download" />
@@ -334,10 +368,16 @@
               <div class="flex items-center justify-between gap-3">
                 <div>
                   <div class="text-sm font-medium text-ink-gray-8">Auto-recharge</div>
-                  <div class="text-xs text-ink-gray-5">Top up from your primary method when low.</div>
+                  <div class="text-xs text-ink-gray-5">
+                    <template v-if="store.autoRecharge">
+                      When your wallet drops below {{ inr(store.rechargeThreshold) }}, we add {{ inr(store.rechargeAmount) }} from your primary method.
+                    </template>
+                    <template v-else>Top up automatically when your wallet runs low.</template>
+                  </div>
                 </div>
                 <Switch :modelValue="store.autoRecharge" @update:modelValue="store.setAutoRecharge" />
               </div>
+              <Button v-if="store.autoRecharge" variant="ghost" size="xs" class="-ml-1.5" label="Edit threshold & amount" @click="openRecharge" />
               <Button variant="solid" class="w-full" label="Add credit" icon-left="lucide-plus" @click="creditOpen = true" />
             </div>
           </template>
@@ -450,14 +490,21 @@
       </template>
     </Dialog>
 
-    <ConfirmDialog
-      v-model:open="stopAllOpen"
-      theme="red"
-      title="Stop billing on all servers?"
-      message="Every server is suspended and its sites go offline until you resume. You won't be charged while they're stopped — nothing is deleted."
-      confirm-label="Stop all billing"
-      @confirm="confirmStopAll"
-    />
+    <!-- Edit auto-recharge threshold & amount -->
+    <Dialog v-model:open="rechargeOpen" size="sm">
+      <template #title><span class="text-xl font-semibold text-ink-gray-9">Auto-recharge</span></template>
+      <div class="space-y-3">
+        <FormControl v-model="rechargeForm.threshold" type="number" label="Top up when wallet drops below (₹)" placeholder="2000" />
+        <FormControl v-model="rechargeForm.amount" type="number" label="Add this much each time (₹)" placeholder="5000" />
+      </div>
+      <template #actions>
+        <div class="flex justify-end gap-2">
+          <Button label="Cancel" @click="rechargeOpen = false" />
+          <Button variant="solid" label="Save" :disabled="!(Number(rechargeForm.threshold) > 0 && Number(rechargeForm.amount) > 0)" @click="saveRecharge" />
+        </div>
+      </template>
+    </Dialog>
+
     <CancelSubscriptionDialog v-model:open="cancelOpen" />
 
     <AddCardDialog v-model:open="addCardOpen" />
@@ -466,6 +513,7 @@
 
 <script setup>
 import { computed, reactive, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import { Alert, Badge, Button, Dialog, Dropdown, FormControl, Switch, Tooltip, toast } from 'frappe-ui'
 import AddCardDialog from '../../components/AddCardDialog.vue'
 import CancelSubscriptionDialog from '../../components/CancelSubscriptionDialog.vue'
@@ -476,14 +524,21 @@ import { inr, usd } from '../../utils/format'
 import { validateEmail, validateTaxId } from '../../utils/validate'
 
 const store = useCloudStore()
+const router = useRouter()
 
 // — Problem states (mostly surfaced by Edge mode, but real once the API is live)
 const overdueInvoice = computed(() => store.invoices.find((i) => i.overdue || i.status === 'Unpaid') || null)
-const declinedMethod = computed(() => store.paymentMethods.find((p) => p.status === 'declined') || null)
+// A declined PRIMARY is only a problem if there's no working backup behind it.
+// With a working backup, the charge just falls through to it — a soft notice.
+const declinedPrimary = computed(() => store.paymentMethods.find((p) => p.primary && p.status === 'declined') || null)
+const backupMethod = computed(() => store.paymentMethods.find((p) => !p.primary && p.status !== 'declined') || null)
+const hasWorkingMethod = computed(() => store.paymentMethods.some((p) => p.status !== 'declined'))
+// The real emergency: methods exist but none can be charged.
+const noWorkingMethod = computed(() => store.paymentMethods.length > 0 && !hasWorkingMethod.value)
 // The wallet is prepaid and a healthy card covers any shortfall — so it's only
-// "at risk" when the balance is short AND there's no working method behind it.
+// "at risk" when the balance is short AND nothing can be charged behind it.
 const walletAtRisk = computed(
-  () => store.walletBalance < store.estimatedThisCycle && (!!declinedMethod.value || !store.paymentMethods.length),
+  () => store.walletBalance < store.estimatedThisCycle && (noWorkingMethod.value || !store.paymentMethods.length),
 )
 // Every curated region except the US legally expects a tax ID on B2B invoices.
 const taxRequired = computed(() => store.billingProfile.taxRegion !== 'US')
@@ -493,6 +548,29 @@ function statusTheme(status) {
   if (['Unpaid', 'Overdue', 'Failed'].includes(status)) return 'red'
   if (status === 'Paid') return 'green'
   return 'gray'
+}
+
+// — Card expiry (cards only). 'expired' | 'soon' (< 60 days) | 'ok'.
+function expiryState(pm) {
+  if (pm.kind !== 'card' || !pm.expiry) return null
+  const [mm, yy] = pm.expiry.split('/').map(Number)
+  const end = new Date(2000 + yy, mm, 0) // last day of the expiry month
+  const days = (end - new Date()) / 86400000
+  if (days < 0) return 'expired'
+  if (days < 60) return 'soon'
+  return 'ok'
+}
+function expiryLabel(pm) {
+  const s = expiryState(pm)
+  if (s === 'expired') return `expired ${pm.expiry}`
+  if (s === 'soon') return `expires ${pm.expiry}`
+  return `exp ${pm.expiry}`
+}
+function expiryClass(pm) {
+  const s = expiryState(pm)
+  if (s === 'expired') return 'text-ink-red-4'
+  if (s === 'soon') return 'text-ink-amber-3'
+  return 'text-ink-gray-5'
 }
 
 const LANGUAGES = [
@@ -508,7 +586,7 @@ function langLabel(v) {
 // — The one docked panel: either an invoice or the wallet history.
 const openPanel = ref(null)
 
-// — Cycle figures (monthly billing; per-day is an informational breakdown)
+// — Cycle figures: where we are in the 30-day cycle and when it bills.
 const cycleDays = CYCLE_DAYS
 const daysElapsed = Math.min(new Date().getDate(), CYCLE_DAYS)
 const billingDueDate = computed(() => {
@@ -516,6 +594,10 @@ const billingDueDate = computed(() => {
   return new Date(d.getFullYear(), d.getMonth() + 1, 1).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
 })
 const deltaUp = computed(() => store.estimateDeltaPct > 0)
+
+// — Invoices: show the 5 most recent; "Load more" reveals the rest.
+const showAllInvoices = ref(false)
+const visibleInvoices = computed(() => (showAllInvoices.value ? store.invoices : store.invoices.slice(0, 5)))
 
 // — Invoice maths
 const GST_RATE = 0.18
@@ -528,16 +610,38 @@ function tax(inv) {
 function total(inv) {
   return subtotal(inv) + tax(inv) - (inv.credits || 0)
 }
+// Wallet credit auto-applies on payment — preview how much for the open invoice.
+const walletApplyPreview = computed(() => {
+  const inv = openPanel.value?.type === 'invoice' ? openPanel.value.data : null
+  if (!inv || inv.status !== 'Unpaid') return 0
+  return Math.min(store.walletBalance, total(inv))
+})
 
-// — Subscriptions
-const anySuspended = computed(() => store.allServers.some((s) => s.status === 'suspended'))
-function resumeAll() {
-  store.allServers.forEach((s) => store.setServerSuspended(s.id, false))
+// — Subscriptions (one per server) — open the server or pause/resume just it.
+function goServer(id) {
+  router.push(`/manage/${id}`)
+}
+function toggleServerBilling(srv, suspend) {
+  store.setServerSuspended(srv.id, suspend)
+  toast.success(suspend ? `${srv.name} paused` : `${srv.name} resumed`)
+}
+function subMenu(srv) {
+  return [
+    { label: 'Open server', icon: 'lucide-arrow-up-right', onClick: () => goServer(srv.id) },
+    srv.status === 'suspended'
+      ? { label: 'Resume billing', icon: 'lucide-play', onClick: () => toggleServerBilling(srv, false) }
+      : { label: 'Pause billing', icon: 'lucide-pause', onClick: () => toggleServerBilling(srv, true) },
+  ]
+}
+
+// — Stop / resume billing (suspend all, never delete)
+const allSuspended = computed(() => store.allServers.length > 0 && store.allServers.every((s) => s.status === 'suspended'))
+const cancelOpen = ref(false) // opens the "Stop billing" confirm dialog
+function resumeBilling() {
+  store.resumeBilling()
   toast.success('Billing resumed')
 }
 
-// — Cancel subscription (delete servers)
-const cancelOpen = ref(false)
 
 // — Payment methods
 const pmOpen = ref(false)
@@ -585,6 +689,20 @@ function addCredit() {
   store.addToWallet(creditAmount.value)
   toast.success(`Added ${inr(Number(creditAmount.value))} to your wallet`)
   creditOpen.value = false
+}
+
+// — Auto-recharge threshold & amount
+const rechargeOpen = ref(false)
+const rechargeForm = reactive({ threshold: '', amount: '' })
+function openRecharge() {
+  rechargeForm.threshold = String(store.rechargeThreshold)
+  rechargeForm.amount = String(store.rechargeAmount)
+  rechargeOpen.value = true
+}
+function saveRecharge() {
+  store.setRecharge({ threshold: rechargeForm.threshold, amount: rechargeForm.amount })
+  toast.success('Auto-recharge updated')
+  rechargeOpen.value = false
 }
 
 // — Invoices
@@ -650,8 +768,13 @@ function saveDetails() {
 // — Budget alert
 const budgetOpen = ref(false)
 const budget = ref('20000')
+function openBudget() {
+  budget.value = store.budgetAlert ? String(store.budgetAlert) : '20000'
+  budgetOpen.value = true
+}
 function setBudget() {
-  toast.success(`Budget alert set at ₹${Number(budget.value).toLocaleString('en-IN')}/cycle`)
+  store.setBudget(budget.value)
+  toast.success(`Budget alert set at ${inr(Number(budget.value))}/cycle`)
   budgetOpen.value = false
 }
 

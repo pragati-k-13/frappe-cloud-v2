@@ -112,7 +112,16 @@ function baseState() {
     usage: [],
     activity: [], // newest first — humanized history of everything done here
     cardOnFile: false,
+    // Settlement is automatic, not a user choice: wallet credit is used first
+    // (prepaid), and whatever it doesn't cover is charged to the primary method
+    // (postpaid fallback).
     autoRecharge: false,
+    // When the wallet falls below `rechargeThreshold`, top it up by
+    // `rechargeAmount` from the primary method (falling back to a backup).
+    rechargeThreshold: 2000,
+    rechargeAmount: 5000,
+    // Cycle-estimate alert threshold (₹), or null when not set.
+    budgetAlert: null,
     upiAutopay: false,
     // Prepaid Wallet (₹) — the monthly invoice draws from this first.
     walletBalance: 0,
@@ -237,9 +246,11 @@ function grownState() {
     { id: uid('wtx'), date: '12 Apr 2026', type: 'bonus', label: 'Referral bonus', amount: 500 },
     { id: uid('wtx'), date: '1 Apr 2026', type: 'charge', label: 'March 2026 invoice', amount: -2410 },
   ]
-  // Prioritized payment methods — Visa primary, UPI as automatic fallback.
+  s.budgetAlert = 20000 // alert when the cycle estimate crosses this
+  // Exactly one primary + one backup. Primary is used first (charge or top-up),
+  // the backup only if the primary fails. Visa expires soon — surfaced inline.
   s.paymentMethods = [
-    { id: uid('pm'), kind: 'card', label: 'Visa', detail: '•••• 4242', primary: true },
+    { id: uid('pm'), kind: 'card', label: 'Visa', detail: '•••• 4242', expiry: '07/26', primary: true },
     { id: uid('pm'), kind: 'upi', label: 'UPI', detail: 'rahul@okhdfc', primary: false },
   ]
   // Past invoices with per-day line items (30-day cycle).
@@ -258,6 +269,18 @@ function grownState() {
     {
       number: 'INV-2026-0003', period: 'March 2026', issued: '1 Apr 2026', status: 'Paid', credits: 0,
       items: [{ label: 'atlas-web-01', plan: 'Standard', days: 30, perDay: 68, amount: 2040 }],
+    },
+    {
+      number: 'INV-2026-0002', period: 'February 2026', issued: '1 Mar 2026', status: 'Paid', credits: 0,
+      items: [{ label: 'atlas-web-01', plan: 'Standard', days: 28, perDay: 68, amount: 1904 }],
+    },
+    {
+      number: 'INV-2026-0001', period: 'January 2026', issued: '1 Feb 2026', status: 'Paid', credits: 0,
+      items: [{ label: 'atlas-web-01', plan: 'Standard', days: 31, perDay: 68, amount: 2108 }],
+    },
+    {
+      number: 'INV-2025-0012', period: 'December 2025', issued: '1 Jan 2026', status: 'Paid', credits: 0,
+      items: [{ label: 'atlas-web-01', plan: 'Starter', days: 31, perDay: 40, amount: 1240 }],
     },
   ]
   s.payoutBalance = 0
@@ -850,26 +873,35 @@ export const useCloudStore = defineStore('cloud', {
       })
     },
 
-    // Cancel the subscription by deleting the chosen servers (and the benches
-    // and sites on them). Deleting every server ends billing entirely.
-    cancelSubscription(serverIds) {
-      const ids = serverIds && serverIds.length ? [...serverIds] : this.servers.map((s) => s.id)
-      const removed = []
-      ids.forEach((id) => {
-        const idx = this.servers.findIndex((s) => s.id === id)
-        if (idx === -1) return
-        const [srv] = this.servers.splice(idx, 1)
-        removed.push(srv.name)
-        if (this.currentServerId === id) this.currentServerId = null
+    // Stop billing by *suspending* every server (its sites go offline). Nothing
+    // is deleted — this is fully reversible via resumeBilling(). Returns the
+    // names that were actually suspended (already-suspended ones are skipped).
+    stopBilling() {
+      const suspended = []
+      this.servers.forEach((srv) => {
+        if (srv.status === 'suspended') return
+        srv.status = 'suspended'
+        srv.sites.forEach((st) => { if (st.status === 'live') st.status = 'suspended' })
+        suspended.push(srv.name)
       })
-      const all = this.servers.length === 0
-      this.logActivity(
-        all
-          ? 'Cancelled subscription and deleted all servers'
-          : `Deleted ${removed.length} server${removed.length === 1 ? '' : 's'} to stop billing`,
-        { tag: 'server', detail: 'A final invoice covers usage up to today. Backups are kept for 30 days.' },
-      )
-      return { removed, all }
+      this.logActivity('Stopped billing — suspended all servers', {
+        tag: 'billing',
+        detail: 'Sites are offline until you resume. Usage up to today is billed in your next invoice. Nothing was deleted.',
+      })
+      return { suspended }
+    },
+
+    // Resume billing by bringing every suspended server (and its sites) back.
+    resumeBilling() {
+      const resumed = []
+      this.servers.forEach((srv) => {
+        if (srv.status !== 'suspended') return
+        srv.status = 'active'
+        srv.sites.forEach((st) => { if (st.status === 'suspended') st.status = 'live' })
+        resumed.push(srv.name)
+      })
+      this.logActivity('Resumed billing — brought all servers back online', { tag: 'billing' })
+      return { resumed }
     },
 
     // — Firewall
@@ -914,9 +946,19 @@ export const useCloudStore = defineStore('cloud', {
       if (this.creditExpired && srv.creditBalance > 0) this.setCreditExpired(false)
       this.logActivity(`Added $${amt} credit`, { tag: 'billing' })
     },
+    setBudget(amount) {
+      const amt = Number(amount)
+      this.budgetAlert = amt > 0 ? amt : null
+      this.logActivity(this.budgetAlert ? `Set a budget alert at ₹${this.budgetAlert.toLocaleString('en-IN')}` : 'Cleared the budget alert', { tag: 'billing' })
+    },
     setAutoRecharge(on) {
       this.autoRecharge = on
       this.logActivity(on ? 'Turned on auto-recharge' : 'Turned off auto-recharge', { tag: 'billing' })
+    },
+    setRecharge({ threshold, amount }) {
+      if (Number(threshold) > 0) this.rechargeThreshold = Number(threshold)
+      if (Number(amount) > 0) this.rechargeAmount = Number(amount)
+      this.logActivity('Updated auto-recharge settings', { tag: 'billing' })
     },
     setUpiAutopay(on) {
       this.upiAutopay = on
@@ -937,12 +979,32 @@ export const useCloudStore = defineStore('cloud', {
       if (on) this.logActivity('Connected a payout bank account', { tag: 'billing' })
     },
 
-    // Settle an outstanding invoice. Goes through `_work`, so Edge mode makes
-    // it fail and the page surfaces the payment-failed toast.
+    // Net amount still owed on an invoice (subtotal + 18% GST − credits already
+    // applied). Shared by the panel preview and payInvoice so they never drift.
+    invoiceDue(inv) {
+      const subtotal = inv.items.reduce((s, i) => s + i.amount, 0)
+      const tax = Math.round(subtotal * 0.18)
+      return subtotal + tax - (inv.credits || 0)
+    },
+
+    // Settle an outstanding invoice. Wallet credit is *always* applied first,
+    // then the remainder goes to the primary method (auto-falling back to a
+    // backup). Goes through `_work`, so Edge mode makes it fail (and rolls back,
+    // since the mutation only runs on success) and the page shows the retry toast.
     payInvoice(number) {
       return this._work(() => {
         const inv = this.invoices.find((i) => i.number === number)
         if (!inv) return
+        const fromWallet = Math.min(this.walletBalance, this.invoiceDue(inv))
+        if (fromWallet > 0) {
+          this.walletBalance -= fromWallet
+          inv.credits = (inv.credits || 0) + fromWallet
+          this.walletHistory.unshift({
+            id: uid('wtx'),
+            date: new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }),
+            type: 'charge', label: `Applied to ${number}`, amount: -fromWallet,
+          })
+        }
         inv.status = 'Paid'
         inv.overdue = false
         this.logActivity(`Paid invoice ${number}`, { tag: 'billing' })
@@ -964,8 +1026,11 @@ export const useCloudStore = defineStore('cloud', {
       this.logActivity(`Added ₹${amt.toLocaleString('en-IN')} to your wallet`, { tag: 'billing' })
     },
 
-    // — Payment methods (prioritized; primary charged first)
+    // — Payment methods. Exactly one primary + one backup is allowed: the
+    // primary is used first, the backup only if it fails. (The UI hides "add"
+    // once two exist; this guard keeps the invariant if called directly.)
     addPaymentMethod(pm) {
+      if (this.paymentMethods.length >= 2) return
       const first = this.paymentMethods.length === 0
       this.paymentMethods.push({ id: uid('pm'), primary: first, ...pm })
       this.logActivity(`Added a payment method (${pm.label || pm.kind})`, { tag: 'billing' })
@@ -1050,10 +1115,12 @@ export const useCloudStore = defineStore('cloud', {
         sg.sites.forEach((st) => { if (st.status === 'live') st.status = 'suspended' })
       }
 
-      // — Payment: primary card declined, and auto-recharge is on so the wallet
-      // can't top itself up — the classic dunning loop.
-      const primary = this.paymentMethods.find((p) => p.primary)
-      if (primary) primary.status = 'declined'
+      // — Payment: *every* method declined, so nothing can be charged — not the
+      // primary, not the backup, not auto-recharge. This is the true worst case
+      // that justifies the overdue invoice and suspended server below. (A primary
+      // declining while a backup still works is a milder, non-blocking state the
+      // billing page handles separately — see CentralBillingPage.)
+      this.paymentMethods.forEach((p) => { p.status = 'declined' })
       this.autoRecharge = true
 
       // — Wallet won't cover the next invoice.

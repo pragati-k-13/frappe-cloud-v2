@@ -6,10 +6,10 @@
 
     <!-- Step 1 — what happens -->
     <div v-if="step === 1" class="space-y-4">
-      <div class="flex items-start gap-3 rounded-lg border border-outline-red-1 bg-surface-red-1 p-3">
-        <span class="lucide-triangle-alert mt-0.5 size-4 shrink-0 text-ink-red-3" />
-        <p class="text-sm text-ink-red-4">
-          This stops billing on every server at once and <span class="font-medium">can't be undone</span>.
+      <div class="flex items-start gap-3 rounded-lg border border-outline-gray-2 bg-surface-gray-1 p-3">
+        <span class="lucide-info mt-0.5 size-4 shrink-0 text-ink-gray-5" />
+        <p class="text-sm text-ink-gray-7">
+          This suspends every server at once. Your sites go offline until you resume — <span class="font-medium">nothing is deleted</span>.
         </p>
       </div>
 
@@ -26,14 +26,14 @@
 
     <!-- Step 2 — done -->
     <div v-else class="py-2 text-center">
-      <span class="mx-auto grid size-12 place-items-center rounded-full bg-surface-green-2 text-ink-green-3">
-        <span class="lucide-check size-6" />
+      <span class="mx-auto grid size-12 place-items-center rounded-full bg-surface-amber-1 text-ink-amber-3">
+        <span class="lucide-pause size-6" />
       </span>
       <p class="mx-auto mt-3 max-w-sm text-sm text-ink-gray-6">
-        {{ result.removed.length }} server{{ result.removed.length === 1 ? '' : 's' }} and their sites were stopped. You won't be charged again.
+        {{ result.suspended.length }} server{{ result.suspended.length === 1 ? '' : 's' }} and their sites were suspended. You won't be charged while they're stopped.
       </p>
       <p class="mx-auto mt-2 max-w-sm text-p-sm text-ink-gray-5">
-        A final invoice for this cycle's usage will be emailed to {{ billingEmail }}. Backups are kept for 30 days.
+        Resume them anytime from Billing — your data and backups are untouched.
       </p>
     </div>
 
@@ -41,7 +41,7 @@
       <div class="flex justify-end gap-2">
         <template v-if="step === 1">
           <Button label="Back" @click="open = false" />
-          <Button variant="solid" theme="red" label="Delete and cancel subscription" @click="confirm" />
+          <Button variant="solid" theme="red" label="Stop billing" @click="confirm" />
         </template>
         <Button v-else variant="solid" label="Done" @click="open = false" />
       </div>
@@ -53,37 +53,25 @@
 import { computed, reactive, ref, watch } from 'vue'
 import { Button, Dialog, toast } from 'frappe-ui'
 import { useCloudStore } from '../stores/cloud'
-import { inr } from '../utils/format'
 
 const open = defineModel('open', { type: Boolean, default: false })
 const store = useCloudStore()
 
 const step = ref(1)
-const result = reactive({ removed: [], all: false })
+const result = reactive({ suspended: [] })
 
-const billingEmail = computed(
-  () => store.billingProfile.invoiceRecipient || store.billingProfile.billingEmail || store.user.email,
-)
+const whatHappens = [
+  { icon: 'lucide-power', text: 'Your sites go offline immediately and show a maintenance page.' },
+  { icon: 'lucide-receipt', text: 'Usage up to today is billed in your next invoice.' },
+  { icon: 'lucide-rotate-ccw', text: 'Resume anytime to bring everything back exactly as it was — nothing is deleted.' },
+]
 
-const whatHappens = computed(() => {
-  const rows = [
-    { icon: 'lucide-receipt', text: 'Usage up to today is charged: a final invoice goes to your payment method on file.' },
-  ]
-  if (store.walletBalance > 0) {
-    rows.push({ icon: 'lucide-wallet', text: `Unused wallet credit (${inr(store.walletBalance)}) is non-refundable and will be forfeited.` })
-  }
-  rows.push({ icon: 'lucide-archive', text: 'Backups are retained for 30 days, in case you need to restore later.' })
-  return rows
-})
-
-const stepTitle = computed(() => (step.value === 1 ? 'Cancel subscription' : 'Subscription cancelled'))
+const stepTitle = computed(() => (step.value === 1 ? 'Stop billing' : 'Billing stopped'))
 
 function confirm() {
-  const r = store.cancelSubscription()
-  result.removed = r.removed
-  result.all = r.all
+  result.suspended = store.stopBilling().suspended
   step.value = 2
-  toast.success('Subscription cancelled')
+  toast.success('Billing stopped')
 }
 
 // Reset to a clean step-1 state every time the dialog opens.
