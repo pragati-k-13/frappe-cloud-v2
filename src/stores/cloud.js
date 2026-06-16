@@ -780,6 +780,28 @@ export const useCloudStore = defineStore('cloud', {
       })
     },
 
+    // Cancel the subscription by deleting the chosen servers (and the benches
+    // and sites on them). Deleting every server ends billing entirely.
+    cancelSubscription(serverIds) {
+      const ids = serverIds && serverIds.length ? [...serverIds] : this.servers.map((s) => s.id)
+      const removed = []
+      ids.forEach((id) => {
+        const idx = this.servers.findIndex((s) => s.id === id)
+        if (idx === -1) return
+        const [srv] = this.servers.splice(idx, 1)
+        removed.push(srv.name)
+        if (this.currentServerId === id) this.currentServerId = null
+      })
+      const all = this.servers.length === 0
+      this.logActivity(
+        all
+          ? 'Cancelled subscription and deleted all servers'
+          : `Deleted ${removed.length} server${removed.length === 1 ? '' : 's'} to stop billing`,
+        { tag: 'server', detail: 'A final invoice covers usage up to today. Backups are kept for 30 days.' },
+      )
+      return { removed, all }
+    },
+
     // — Firewall
     addFirewallRule(serverId, { name, port, action }) {
       const srv = this.findServer(serverId)
