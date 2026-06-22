@@ -174,12 +174,14 @@
                 <div v-else-if="d.status === 'pending'" class="mt-0.5 text-sm text-ink-gray-5">Add these records at your DNS provider, then verify.</div>
                 <div v-else class="mt-0.5 text-sm text-ink-gray-5">SSL is issued once DNS checks out</div>
               </div>
-              <Button v-if="d.status === 'pending'" variant="solid" size="sm" label="Verify" icon-left="lucide-check" @click="verifyDomain(d)" />
+              <Button v-if="d.status === 'verifying'" variant="subtle" size="sm" label="Verifying…" loading disabled />
+              <Button v-else-if="d.status === 'pending'" variant="solid" size="sm" label="Verify" icon-left="lucide-check" @click="verifyDomain(d)" />
               <Button v-else-if="d.status === 'failed'" variant="subtle" size="sm" label="Retry" icon-left="lucide-refresh-cw" @click="verifyDomain(d)" />
             </div>
 
-            <!-- Records to add at the DNS provider (before first verify, or after a failure) -->
-            <template v-if="(d.status === 'pending' || d.status === 'failed') && d.dnsRecords?.length">
+            <!-- Records to add at the DNS provider — stay visible through the
+                 verifying check, until SSL is active. -->
+            <template v-if="['pending', 'failed', 'verifying'].includes(d.status) && d.dnsRecords?.length">
               <div class="mt-3 overflow-hidden rounded-lg border border-outline-gray-2">
                 <div class="grid grid-cols-[4rem_1fr_1fr] gap-3 border-b border-outline-gray-1 bg-surface-gray-1 px-3 py-2 text-xs font-medium text-ink-gray-5">
                   <span>Type</span><span>Host</span><span>Value</span>
