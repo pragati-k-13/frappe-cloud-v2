@@ -24,6 +24,13 @@ function sidebarPref() {
   return localStorage.getItem('fc.sidebarCollapsed') === 'true'
 }
 
+// Colour theme is the other account-wide preference. 'system' follows the OS;
+// 'light'/'dark' pin it. Applied to the document root in App.vue.
+function themePref() {
+  if (typeof localStorage === 'undefined') return 'system'
+  return localStorage.getItem('fc.theme') || 'system'
+}
+
 const BUILT_IN_PERMISSIONS = {
   'role-owner':   { administrator: true,  createSites: true,  marketplace: true,  webhooks: true,  billing: true },
   'role-admin':   { administrator: false, createSites: true,  marketplace: true,  webhooks: true,  billing: false },
@@ -141,8 +148,9 @@ function baseState() {
       { id: 'role-billing', name: 'Billing', desc: 'View invoices and manage payment', system: true, permissions: { ...BUILT_IN_PERMISSIONS['role-billing'] } },
       { id: 'role-member',  name: 'Member',  desc: 'View-only access to servers and sites', system: true, permissions: { ...BUILT_IN_PERMISSIONS['role-member'] } },
     ],
-    // Account-wide preference — see sidebarPref().
+    // Account-wide preferences — see sidebarPref() / themePref().
     sidebarCollapsed: sidebarPref(),
+    theme: themePref(), // 'system' | 'light' | 'dark'
     // Teams the signed-in user belongs to; the switcher (issue #7) flips
     // `currentTeamId`. `team` (getter) resolves to the active one.
     teams: [{ id: 'team-1', name: 'My team', avatar: null }],
@@ -493,6 +501,15 @@ export const useCloudStore = defineStore('cloud', {
       this.sidebarCollapsed = on
       if (typeof localStorage !== 'undefined') {
         localStorage.setItem('fc.sidebarCollapsed', on ? 'true' : 'false')
+      }
+    },
+
+    // Colour theme preference, persisted like the sidebar. App.vue watches
+    // `theme` and applies it to the document root.
+    setTheme(value) {
+      this.theme = value
+      if (typeof localStorage !== 'undefined') {
+        localStorage.setItem('fc.theme', value)
       }
     },
 

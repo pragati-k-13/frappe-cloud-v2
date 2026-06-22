@@ -36,6 +36,7 @@ declare module 'vue' {
     ServerHealth: typeof import('./src/components/ServerHealth.vue')['default']
     ServerShell: typeof import('./src/components/ServerShell.vue')['default']
     SiteCard: typeof import('./src/components/SiteCard.vue')['default']
+    SystemInfoDialog: typeof import('./src/components/SystemInfoDialog.vue')['default']
     WorldMap: typeof import('./src/components/WorldMap.vue')['default']
   }
 }

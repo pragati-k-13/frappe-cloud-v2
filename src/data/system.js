@@ -145,6 +145,12 @@ export const SYSTEM_INFO = [
   { label: 'Python', value: '3.14' },
   { label: 'Node', value: '22' },
   { label: 'MariaDB', value: '11.4' },
+  { label: 'Redis', value: '7.2' },
   { label: 'Bench', value: 'v5.27' },
   { label: 'Region', value: 'Mumbai' },
 ]
+
+// The runtime versions worth showing a Frappe Cloud user: language/engine
+// versions they need for compatibility, not the platform's internal ports or
+// process manager. Looked up from SYSTEM_INFO by label.
+export const RUNTIME_LABELS = ['Python', 'Node', 'MariaDB', 'Redis']

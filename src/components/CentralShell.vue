@@ -198,7 +198,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, h, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { Avatar, Breadcrumbs, Button, Dialog, Dropdown, FormControl, Tooltip, toast } from 'frappe-ui'
 import cloudLogo from '../assets/apps/cloud.png'
@@ -264,9 +264,35 @@ function toggleGroup(label) {
 }
 
 // Brand dropdown — account-level switches that used to be a standalone team selector.
+// Light / dark / system, with a check on the active choice. Theme is an
+// account-wide pref applied in App.vue.
+const themeOptions = computed(() =>
+  [
+    { value: 'light', label: 'Light', icon: 'lucide-sun' },
+    { value: 'dark', label: 'Dark', icon: 'lucide-moon' },
+    { value: 'system', label: 'System', icon: 'lucide-monitor' },
+  ].map((t) => ({
+    label: t.label,
+    icon: t.icon,
+    onClick: () => store.setTheme(t.value),
+    slots: {
+      suffix: () =>
+        store.theme === t.value ? h('span', { class: 'lucide-check size-4 text-ink-gray-7' }) : null,
+    },
+  })),
+)
+
 const brandOptions = computed(() => [
-  { label: 'Change team', icon: 'lucide-arrow-left-right', onClick: () => { switchTeamOpen.value = true } },
-  { label: 'Toggle dark mode', icon: 'lucide-moon', onClick: () => toast('Dark mode is coming soon') },
+  {
+    label: 'Change team',
+    icon: 'lucide-arrow-left-right',
+    description: store.team?.name,
+    slots: { label: () => h('span', { class: 'block min-w-[12rem]' }, 'Change team') },
+    onClick: () => {
+      switchTeamOpen.value = true
+    },
+  },
+  { group: 'Theme', options: themeOptions.value },
 ])
 
 const profileOpen = ref(false)

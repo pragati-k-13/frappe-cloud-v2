@@ -104,6 +104,7 @@
       />
 
       <ProfileDialog v-model:open="profileOpen" />
+      <SystemInfoDialog v-model:open="systemInfoOpen" :server="server" />
     </aside>
 
     <div class="flex min-w-0 flex-1 flex-col">
@@ -145,6 +146,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { Avatar, Breadcrumbs, Button, Dropdown, Tooltip } from 'frappe-ui'
 import cloudLogo from '../assets/apps/cloud.png'
 import ProfileDialog from './ProfileDialog.vue'
+import SystemInfoDialog from './SystemInfoDialog.vue'
 import { useCloudStore } from '../stores/cloud'
 import { usd } from '../utils/format'
 
@@ -203,15 +205,50 @@ watch(devActive, (on) => {
   if (on) devOpen.value = true
 })
 
-// Brand dropdown — a single way out, back to the Central account view.
-// (No server-switcher list: accounts can have many servers; switch via Central.)
+// Brand dropdown — the quick, low-stakes menu for this server: jump back to
+// Central, open read-only System info, switch theme. Anything that *changes*
+// the server (version, firewall, workers) lives on the Settings page, not here.
+const systemInfoOpen = ref(false)
+
+// Light / dark / system, with a check on the active choice. Theme is an
+// account-wide pref applied in App.vue.
+const themeOptions = computed(() =>
+  [
+    { value: 'light', label: 'Light', icon: 'lucide-sun' },
+    { value: 'dark', label: 'Dark', icon: 'lucide-moon' },
+    { value: 'system', label: 'System', icon: 'lucide-monitor' },
+  ].map((t) => ({
+    label: t.label,
+    icon: t.icon,
+    onClick: () => store.setTheme(t.value),
+    slots: {
+      suffix: () =>
+        store.theme === t.value ? h('span', { class: 'lucide-check size-4 text-ink-gray-7' }) : null,
+    },
+  })),
+)
+
 const serverMenu = computed(() => [
   {
     label: 'Central',
-    slots: { prefix: () => h('img', { src: cloudLogo, alt: '', class: 'size-4 shrink-0 rounded' }) },
+    description: store.team?.name,
+    slots: {
+      prefix: () => h('img', { src: cloudLogo, alt: '', class: 'size-4 shrink-0 rounded' }),
+      // Widen the menu to at least the sidebar width (issue: dropdown felt cramped).
+      label: () => h('span', { class: 'block min-w-[12rem]' }, 'Central'),
+    },
     // Central is its own workspace — open it in a new tab.
     onClick: () => window.open('/servers', '_blank', 'noopener'),
   },
+  {
+    label: 'System info',
+    icon: 'lucide-info',
+    description: 'Versions, storage, services',
+    onClick: () => {
+      systemInfoOpen.value = true
+    },
+  },
+  { group: 'Theme', options: themeOptions.value },
 ])
 
 const profileOpen = ref(false)
