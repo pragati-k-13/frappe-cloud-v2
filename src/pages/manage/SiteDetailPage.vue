@@ -69,36 +69,46 @@
 
     <!-- Backups -->
     <section v-else-if="tab === 'backups'" class="mt-5 space-y-4">
-      <div class="flex flex-wrap items-end justify-between gap-3 rounded-xl border border-outline-gray-2 bg-surface-elevation-1 p-4">
-        <div class="w-44">
-          <FormControl
-            type="select"
-            label="Automatic backups"
-            :modelValue="site.backupSchedule"
-            :options="scheduleOptions"
-            @update:modelValue="setSchedule"
-          />
+      <div class="flex flex-wrap items-center justify-between gap-3">
+        <div class="min-w-0">
+          <div class="text-sm font-medium text-ink-gray-8">Automatic backups</div>
+          <div class="mt-0.5 text-p-sm text-ink-gray-5">Taken on a schedule and kept for 30 days.</div>
         </div>
-        <div class="flex items-center gap-3">
-          <span class="text-sm text-ink-gray-5">Kept for 30 days.</span>
+        <div class="flex items-center gap-2">
+          <div class="w-40">
+            <FormControl
+              type="select"
+              :modelValue="site.backupSchedule"
+              :options="scheduleOptions"
+              @update:modelValue="setSchedule"
+            />
+          </div>
           <Button variant="subtle" size="sm" label="Back up now" icon-left="lucide-archive" @click="backupNow" />
         </div>
       </div>
 
-      <div v-if="site.backups.length" class="divide-y divide-outline-alpha-gray-1 rounded-xl border border-outline-gray-2 bg-surface-elevation-1">
-        <div v-for="b in site.backups" :key="b.id" class="flex items-center gap-3 p-4">
-          <span class="lucide-archive size-4 shrink-0 text-ink-gray-5" />
-          <div class="min-w-0 flex-1">
-            <div class="flex items-center gap-2">
-              <span class="text-sm font-medium text-ink-gray-9">{{ fmtDateTime(b.at) }}</span>
-              <Badge v-if="b.kind === 'manual'" theme="gray" variant="subtle" label="Manual" />
-            </div>
-            <div class="text-sm text-ink-gray-5">{{ b.size }}</div>
+      <ListView
+        v-if="site.backups.length"
+        class="fc-listview"
+        :style="{ height: `${48 + site.backups.length * 44}px` }"
+        :columns="backupColumns"
+        :rows="backupRows"
+        :options="{ selectable: false, showTooltip: false, rowHeight: 44 }"
+        row-key="id"
+      >
+        <template #cell="{ column, row }">
+          <div v-if="column.key === 'date'" class="flex min-w-0 items-center gap-2.5">
+            <span class="lucide-archive size-4 shrink-0 text-ink-gray-5" />
+            <span class="truncate text-sm font-medium text-ink-gray-8">{{ fmtDateTime(row._b.at) }}</span>
+            <Badge v-if="row._b.kind === 'manual'" theme="gray" variant="subtle" label="Manual" />
           </div>
-          <Button variant="ghost" size="sm" label="Download" @click="download" />
-          <Button variant="ghost" size="sm" label="Restore" @click="askRestore(b)" />
-        </div>
-      </div>
+          <span v-else-if="column.key === 'size'" class="text-sm tabular-nums text-ink-gray-6">{{ row._b.size }}</span>
+          <div v-else-if="column.key === 'actions'" class="flex items-center justify-end gap-1">
+            <Button variant="ghost" size="sm" label="Download" @click="download" />
+            <Button variant="ghost" size="sm" label="Restore" @click="askRestore(row._b)" />
+          </div>
+        </template>
+      </ListView>
       <EmptyState v-else icon="lucide-archive" title="No backups yet" description="The first automatic backup runs tonight at 2 AM. You can also back up now.">
         <Button variant="subtle" size="sm" label="Back up now" icon-left="lucide-archive" @click="backupNow" />
       </EmptyState>
@@ -533,6 +543,13 @@ function toggle(opt) {
 }
 
 // — Config tab: raw key/value table, rendered with frappe-ui's ListView.
+const backupColumns = [
+  { label: 'Backup', key: 'date', width: 2 },
+  { label: 'Size', key: 'size', width: 1 },
+  { label: '', key: 'actions', width: '11rem', align: 'right' },
+]
+const backupRows = computed(() => site.value.backups.map((b) => ({ id: b.id, _b: b })))
+
 const configColumns = [
   { label: 'Config name', key: 'name', width: 2 },
   { label: 'Value', key: 'value', width: 2 },

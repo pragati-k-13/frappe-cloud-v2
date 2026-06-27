@@ -21,6 +21,18 @@
   border-bottom: 1px solid var(--outline-gray-2);
 }
 
+/* App grid: drop the row divider on the last row. The last item is always on it;
+   in the 2-up grid its left-column partner is too (an odd-positioned item that's
+   second-to-last). Each rule clears the border on the row's inner (last) child. */
+.app-grid > :last-child > :last-child {
+  border-bottom-width: 0;
+}
+@media (min-width: 640px) {
+  .app-grid > :nth-last-child(2):nth-child(odd) > :last-child {
+    border-bottom-width: 0;
+  }
+}
+
 /* Gentle reveal used for the structure explainer and new site cards. */
 .reveal-enter-active {
   transition:

@@ -6,7 +6,7 @@
       @click="open = !open"
     >
       <span v-if="icon" class="size-4 shrink-0 text-ink-gray-5" :class="icon" />
-      <span class="flex-1 text-xs font-medium uppercase tracking-wide text-ink-gray-5">{{ title }}</span>
+      <span class="flex-1 text-sm font-medium text-ink-gray-7">{{ title }}</span>
       <span class="lucide-chevron-down size-4 shrink-0 text-ink-gray-5 transition-transform" :class="open && 'rotate-180'" />
     </button>
     <div v-show="open" class="px-5 pb-5 pt-1">

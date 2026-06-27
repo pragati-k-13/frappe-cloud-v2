@@ -66,7 +66,7 @@
           <section v-if="active === 'Marketplace'">
             <!-- No cards — compact rows divided by a rule that runs under the
                  text only (not the logo), like a list. -->
-            <div class="grid gap-x-8 sm:grid-cols-2">
+            <div class="app-grid grid gap-x-8 sm:grid-cols-2">
             <div
               v-for="app in marketApps"
               :key="app.key"

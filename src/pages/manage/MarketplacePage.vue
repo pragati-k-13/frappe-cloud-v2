@@ -26,10 +26,12 @@
       <span class="text-sm text-ink-gray-7">Installing onto <span class="font-medium text-ink-gray-9">{{ preselectedSite.name }}</span></span>
       <button v-if="liveSites.length > 1" class="ml-auto text-sm text-ink-gray-5 underline-offset-2 hover:underline" @click="siteSelectOpen = true">Choose a different site</button>
     </div>
-    <div v-else-if="!liveSites.length" class="mt-4 flex items-center gap-2 rounded-lg border border-outline-amber-1 bg-surface-amber-1 px-3 py-2 text-sm text-ink-amber-8">
-      <span class="lucide-triangle-alert size-4 shrink-0" />
-      {{ server.name }} has no live site yet — create one first, then install apps on it.
-    </div>
+    <Alert
+      v-else-if="!liveSites.length"
+      theme="yellow"
+      class="mt-4"
+      :title="`${server.name} has no live site yet — create one first, then install apps on it.`"
+    />
 
     <!-- Search + category filter. -->
     <div class="mt-5 flex flex-col gap-2 sm:flex-row">
@@ -42,7 +44,7 @@
     <!-- App rows — one tappable list. Marketplace is a catalog: it installs and
          shows status, but managing an installed app (update, uninstall) happens
          on the site that owns it, so there's a single source of truth. -->
-    <div class="mt-2 grid gap-x-8 sm:grid-cols-2">
+    <div class="app-grid mt-2 grid gap-x-8 sm:grid-cols-2">
       <div v-for="app in marketApps" :key="app.key" class="flex items-center gap-2.5">
         <AppIcon :app-key="app.key" size="md" class="shrink-0" />
         <div class="flex min-w-0 flex-1 items-center justify-between gap-2 border-b border-outline-gray-2 py-4">
@@ -190,6 +192,7 @@
 import { computed, onUnmounted, reactive, ref, watchEffect } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { Button, Dialog, FormControl, Tooltip, toast } from 'frappe-ui'
+import Alert from '../../components/Alert.vue'
 import AppIcon from '../../components/AppIcon.vue'
 import ServerShell from '../../components/ServerShell.vue'
 import SiteIcon from '../../components/SiteIcon.vue'

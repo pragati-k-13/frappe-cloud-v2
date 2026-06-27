@@ -43,14 +43,14 @@
             <Dropdown :options="sortOptions" placement="bottom-end">
               <Button variant="subtle" size="sm" label="Sort" icon-left="lucide-arrow-up-down" />
             </Dropdown>
-            <div class="flex shrink-0 overflow-hidden rounded border border-outline-gray-2">
-              <button class="grid size-7 place-items-center" :class="view === 'grid' ? 'bg-surface-gray-3 text-ink-gray-9' : 'text-ink-gray-5 hover:bg-surface-gray-2'" aria-label="Grid view" @click="view = 'grid'">
-                <span class="lucide-layout-grid size-4" />
-              </button>
-              <button class="grid size-7 place-items-center border-l border-outline-gray-2" :class="view === 'list' ? 'bg-surface-gray-3 text-ink-gray-9' : 'text-ink-gray-5 hover:bg-surface-gray-2'" aria-label="List view" @click="view = 'list'">
-                <span class="lucide-list size-4" />
-              </button>
-            </div>
+            <TabButtons
+              v-model="view"
+              class="shrink-0"
+              :options="[
+                { value: 'grid', icon: 'lucide-layout-grid', tooltip: 'Grid view' },
+                { value: 'list', icon: 'lucide-list', tooltip: 'List view' },
+              ]"
+            />
           </div>
 
           <!-- Empty -->
@@ -221,7 +221,7 @@
 <script setup>
 import { computed, h, ref, watchEffect } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { Badge, Button, Dialog, Dropdown, FormControl, ListView, Tooltip, toast } from 'frappe-ui'
+import { Badge, Button, Dialog, Dropdown, FormControl, ListView, TabButtons, Tooltip, toast } from 'frappe-ui'
 import Alert from '../../components/Alert.vue'
 import SiteIcon from '../../components/SiteIcon.vue'
 import AddCardDialog from '../../components/AddCardDialog.vue'
