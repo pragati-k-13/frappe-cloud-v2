@@ -71,51 +71,58 @@
               :key="site.id"
               role="button"
               tabindex="0"
-              class="cursor-pointer rounded-xl border border-outline-gray-2 bg-surface-elevation-1 p-4 transition-colors hover:border-outline-gray-3 hover:bg-surface-gray-1"
+              class="flex cursor-pointer items-start gap-3 rounded-xl border border-outline-gray-2 bg-surface-elevation-1 p-4 transition-colors hover:border-outline-gray-3 hover:bg-surface-gray-1"
               @click="goSite(site)"
               @keydown.enter="goSite(site)"
             >
-              <div class="flex items-start justify-between gap-2">
-                <span class="min-w-0 flex-1 truncate text-base font-semibold text-ink-gray-9">{{ site.name }}</span>
-                <Dropdown :options="siteOptions(site)" placement="bottom-end">
-                  <button class="-mr-1 -mt-0.5 rounded p-1 text-ink-gray-5 hover:bg-surface-gray-3 hover:text-ink-gray-7" :aria-label="`Actions for ${site.name}`" @click.stop><span class="lucide-ellipsis size-4" /></button>
-                </Dropdown>
-              </div>
-              <div class="mt-1.5 flex flex-wrap items-center gap-x-1.5 gap-y-2 text-sm text-ink-gray-5">
-                <span class="size-1.5 shrink-0 rounded-full" :class="statusDot(site)" />
-                <span>{{ statusLabel(site) }}</span>
-                <span class="text-ink-gray-4">·</span>
-                <span>{{ site.apps.length }} {{ site.apps.length === 1 ? 'app' : 'apps' }}</span>
-                <Badge v-if="hasUpdate(site)" theme="orange" variant="subtle" label="Update available" class="ml-1" />
+              <SiteIcon size="md" class="shrink-0" />
+              <div class="min-w-0 flex-1">
+                <div class="flex items-start justify-between gap-2">
+                  <div class="flex min-w-0 items-center gap-2">
+                    <span class="truncate text-base font-semibold text-ink-gray-9">{{ site.name }}</span>
+                    <span class="flex shrink-0 items-center gap-1.5 text-p-sm text-ink-gray-5">
+                      <span class="size-1.5 rounded-full" :class="statusDot(site)" />
+                      {{ statusLabel(site) }}
+                    </span>
+                  </div>
+                  <Dropdown :options="siteOptions(site)" placement="bottom-end">
+                    <button class="-mr-1 -mt-0.5 rounded p-1 text-ink-gray-5 hover:bg-surface-gray-3 hover:text-ink-gray-7" :aria-label="`Actions for ${site.name}`" @click.stop><span class="lucide-ellipsis size-4" /></button>
+                  </Dropdown>
+                </div>
+                <div class="mt-1 flex items-center gap-1.5 text-p-sm text-ink-gray-5">
+                  <span>{{ site.apps.length }} {{ site.apps.length === 1 ? 'app' : 'apps' }}</span>
+                  <Badge v-if="hasUpdate(site)" theme="orange" variant="ghost" label="Update available" />
+                </div>
               </div>
             </div>
           </div>
 
-          <!-- List -->
-          <div v-else class="mt-4 divide-y divide-outline-alpha-gray-1 overflow-hidden rounded-xl border border-outline-gray-2 bg-surface-elevation-1">
-            <div
-              v-for="site in filteredSites"
-              :key="site.id"
-              role="button"
-              tabindex="0"
-              class="flex cursor-pointer items-center gap-3 p-3.5 transition-colors hover:bg-surface-gray-1"
-              @click="goSite(site)"
-              @keydown.enter="goSite(site)"
-            >
-              <div class="min-w-0 flex-1">
-                <div class="truncate font-semibold text-ink-gray-9">{{ site.name }}</div>
-                <div class="mt-0.5 flex items-center gap-1.5 text-xs text-ink-gray-5">
-                  <span class="size-1.5 shrink-0 rounded-full" :class="statusDot(site)" />
-                  <span>{{ statusLabel(site) }}</span>
-                  <span class="text-ink-gray-4">· {{ site.apps.length }} {{ site.apps.length === 1 ? 'app' : 'apps' }}</span>
-                </div>
+          <!-- List — frappe-ui ListView, kept basic. -->
+          <ListView
+            v-else
+            class="mt-4 fc-listview"
+            :style="{ height: `${52 + listRows.length * 50}px` }"
+            :columns="listColumns"
+            :rows="listRows"
+            :options="{ selectable: false, showTooltip: false, rowHeight: 50, onRowClick: (row) => goSite(row._site) }"
+            row-key="id"
+          >
+            <template #cell="{ column, row }">
+              <div v-if="column.key === 'name'" class="flex min-w-0 items-center gap-2.5">
+                <SiteIcon size="sm" />
+                <span class="truncate text-base font-medium text-ink-gray-8">{{ row.name }}</span>
               </div>
-              <Badge v-if="hasUpdate(site)" theme="orange" variant="subtle" label="Update available" class="hidden shrink-0 sm:inline-flex" />
-              <Dropdown :options="siteOptions(site)" placement="bottom-end">
-                <Button variant="ghost" size="sm" icon="lucide-ellipsis-vertical" :aria-label="`Actions for ${site.name}`" @click.stop />
+              <span v-else-if="column.key === 'status'" class="flex items-center gap-1.5 text-sm text-ink-gray-6">
+                <span class="size-1.5 shrink-0 rounded-full" :class="statusDot(row._site)" />
+                {{ statusLabel(row._site) }}
+              </span>
+              <span v-else-if="column.key === 'apps'" class="text-sm tabular-nums text-ink-gray-6">{{ row._site.apps.length }} {{ row._site.apps.length === 1 ? 'app' : 'apps' }}</span>
+              <Badge v-else-if="column.key === 'update' && hasUpdate(row._site)" theme="orange" variant="subtle" label="Update available" />
+              <Dropdown v-else-if="column.key === 'actions'" :options="siteOptions(row._site)" placement="bottom-end">
+                <button class="grid size-7 place-items-center rounded text-ink-gray-5 hover:bg-surface-gray-3 hover:text-ink-gray-7" :aria-label="`Actions for ${row.name}`" @click.stop><span class="lucide-ellipsis-vertical size-4" /></button>
               </Dropdown>
-            </div>
-          </div>
+            </template>
+          </ListView>
         </div>
       </div>
 
@@ -214,8 +221,9 @@
 <script setup>
 import { computed, h, ref, watchEffect } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { Badge, Button, Dialog, Dropdown, FormControl, Tooltip, toast } from 'frappe-ui'
+import { Badge, Button, Dialog, Dropdown, FormControl, ListView, Tooltip, toast } from 'frappe-ui'
 import Alert from '../../components/Alert.vue'
+import SiteIcon from '../../components/SiteIcon.vue'
 import AddCardDialog from '../../components/AddCardDialog.vue'
 import ChangeVersionDialog from '../../components/ChangeVersionDialog.vue'
 import EmptyState from '../../components/EmptyState.vue'
@@ -295,6 +303,16 @@ const filteredSites = computed(() => {
   else out.sort((a, b) => a.createdAt - b.createdAt)
   return out
 })
+
+// List view rows/columns for the basic ListView.
+const listColumns = [
+  { label: 'Site', key: 'name', width: 2 },
+  { label: 'Status', key: 'status', width: 1 },
+  { label: 'Apps', key: 'apps', width: '5rem' },
+  { label: '', key: 'update', width: 1 },
+  { label: '', key: 'actions', width: '3rem', align: 'right' },
+]
+const listRows = computed(() => filteredSites.value.map((s) => ({ id: s.id, name: s.name, _site: s })))
 
 function goSite(site) {
   router.push(`${base.value}/sites/${site.id}`)

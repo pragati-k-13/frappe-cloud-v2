@@ -115,7 +115,7 @@
       </div>
 
       <ListView
-        class="mt-3"
+        class="mt-3 fc-listview"
         :style="{ height: configListHeight }"
         :columns="configColumns"
         :rows="configRows"

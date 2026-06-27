@@ -10,6 +10,17 @@
   color: var(--surface-elevation-1);
 }
 
+/* ListView header: swap frappe-ui's default gray-pill for a clean, bordered
+   header (transparent, hairline underline). The class lands on ListView's inner
+   container via $attrs.class, so its first child is the ListHeader. Add
+   `fc-listview` to any ListView to get this look. */
+.fc-listview > :first-child {
+  background-color: transparent;
+  border-radius: 0;
+  margin-bottom: 0;
+  border-bottom: 1px solid var(--outline-gray-2);
+}
+
 /* Gentle reveal used for the structure explainer and new site cards. */
 .reveal-enter-active {
   transition:
