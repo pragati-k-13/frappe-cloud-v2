@@ -1,59 +1,65 @@
 <template>
   <OnboardingShell :step="4">
-    <div class="flex flex-col items-center py-2 text-center">
-      <!-- Animated server badge — a soft pulsing ring while it provisions -->
-      <div class="relative grid size-16 place-items-center">
-        <span class="absolute inset-0 animate-ping rounded-2xl bg-surface-gray-3 opacity-60" />
-        <span class="relative grid size-16 place-items-center rounded-2xl bg-surface-gray-2 ring-1 ring-outline-gray-2">
-          <span class="lucide-server size-7 text-ink-gray-7" />
+    <div class="flex flex-col py-2">
+      <!-- Header: small server badge on the left, title + subtext beside it -->
+      <div class="flex items-center gap-3">
+        <span class="relative grid size-10 shrink-0 place-items-center">
+          <span class="provision-glow absolute inset-0 rounded-xl bg-surface-gray-3" />
+          <span class="relative grid size-10 place-items-center rounded-xl bg-surface-gray-2 ring-1 ring-outline-gray-2">
+            <span class="lucide-server size-5 text-ink-gray-7" />
+          </span>
         </span>
+        <div class="min-w-0">
+          <h1 class="text-base font-semibold text-ink-gray-9">Setting up your server</h1>
+          <p class="text-p-sm text-ink-gray-5">Usually about 2 minutes.</p>
+        </div>
       </div>
 
-      <h1 class="mt-6 text-xl font-semibold text-ink-gray-9">Setting up your server</h1>
-      <p class="mt-1.5 text-p-base text-ink-gray-6">This usually takes about 2 minutes.</p>
+      <!-- A normal progress bar, filling steadily as it provisions -->
+      <Progress :value="progressValue" size="lg" class="mt-5 w-full" />
 
-      <Progress :value="progress" size="md" class="mt-6 w-full" />
-
-      <ul class="mt-6 w-full space-y-3 text-left">
-        <li v-for="(s, i) in steps" :key="s" class="flex items-center gap-2.5 text-sm">
-          <span v-if="i < stepIndex" class="lucide-circle-check size-5 text-ink-green-6" />
-          <Spinner v-else-if="i === stepIndex" class="size-5 text-ink-gray-5" />
-          <span v-else class="grid size-5 place-items-center">
-            <span class="size-1.5 rounded-full bg-surface-gray-4" />
-          </span>
-          <span :class="i <= stepIndex ? 'text-ink-gray-8' : 'text-ink-gray-4'">{{ s }}</span>
-        </li>
-      </ul>
+      <!-- A rotating tip turns the wait into a head start -->
+      <div class="mt-4 min-h-[2.5rem]">
+        <Transition name="tip" mode="out-in">
+          <p :key="tipIndex" class="text-p-sm text-ink-gray-6">{{ tips[tipIndex] }}</p>
+        </Transition>
+      </div>
 
       <!-- Reassure: they don't have to wait here -->
-      <p class="mt-7 flex items-center justify-center gap-1.5 text-p-sm text-ink-gray-5">
+      <p class="mt-1 flex items-center gap-1.5 text-p-sm text-ink-gray-5">
         <span class="lucide-mail size-3.5 shrink-0" />
-        You can leave this — we'll email {{ store.user.email || 'you' }} when it's ready.
+        Leave anytime — we'll email you when it's ready.
       </p>
 
-      <Button variant="ghost" size="sm" label="Skip the wait (demo)" class="mt-3" @click="finish" />
+      <Button variant="ghost" size="sm" label="Skip the wait (demo)" class="-ml-2 mt-4 self-start" @click="finish" />
     </div>
   </OnboardingShell>
 </template>
 
 <script setup>
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { Button, Progress, Spinner } from 'frappe-ui'
+import { Button, Progress } from 'frappe-ui'
 import OnboardingShell from '../../components/OnboardingShell.vue'
-import { appByKey } from '../../data/catalog'
 import { useCloudStore } from '../../stores/cloud'
 
 const store = useCloudStore()
 const router = useRouter()
 
-const appName = appByKey(store.onboarding.appKey).name
-const steps = ['Creating your server', `Installing ${appName}`, 'Creating your site']
+// Punchy, reassuring things a new account should know — one at a time.
+const tips = [
+  'Push to GitHub and it deploys automatically.',
+  'Daily backups run on their own — restore in seconds.',
+  'Add a custom domain anytime; we handle the SSL.',
+  'Resize your plan in a minute, with no downtime.',
+  'Invite your team with exactly the access they need.',
+]
+const tipIndex = ref(0)
+const progressValue = ref(0)
 
-const stepIndex = ref(0)
-let timer = null
-
-const progress = computed(() => Math.round((stepIndex.value / steps.length) * 100))
+let provisionTimer = null
+let tipTimer = null
+let progressTimer = null
 
 onMounted(() => {
   if (!store.server) {
@@ -64,18 +70,84 @@ onMounted(() => {
     router.replace('/app')
     return
   }
-  timer = setInterval(() => {
-    stepIndex.value += 1
-    if (stepIndex.value >= steps.length) finish()
-  }, 1700)
+  // Fill steadily toward ~96% over the ~30s wait — never hit 100 until it's done.
+  progressTimer = setInterval(() => {
+    progressValue.value = Math.min(96, progressValue.value + 0.64)
+  }, 200)
+  tipTimer = setInterval(() => {
+    tipIndex.value = (tipIndex.value + 1) % tips.length
+  }, 4500)
+  // Mockup: hold on this screen ~30s so the loading + tips are actually visible.
+  provisionTimer = setTimeout(finish, 30000)
 })
 
-onBeforeUnmount(() => clearInterval(timer))
+onBeforeUnmount(() => {
+  clearInterval(progressTimer)
+  clearInterval(tipTimer)
+  clearTimeout(provisionTimer)
+})
 
 // No "you're live" stop in between — the site itself is the payoff.
 function finish() {
-  clearInterval(timer)
+  clearInterval(progressTimer)
+  clearInterval(tipTimer)
+  clearTimeout(provisionTimer)
+  progressValue.value = 100
   store.completeProvisioning()
   router.replace('/app')
 }
 </script>
+
+<style scoped>
+/* A soft halo breathes out behind the badge — a calmer pulse than animate-ping. */
+.provision-glow {
+  animation: provision-glow 2.6s cubic-bezier(0.23, 1, 0.32, 1) infinite;
+}
+@keyframes provision-glow {
+  0% {
+    transform: scale(1);
+    opacity: 0.5;
+  }
+  100% {
+    transform: scale(1.5);
+    opacity: 0;
+  }
+}
+
+/* Tip swap: old slides up, new rises from below; blur masks the crossfade so the
+   eye reads one moving line instead of two overlapping ones. */
+.tip-enter-active,
+.tip-leave-active {
+  transition:
+    opacity 320ms cubic-bezier(0.23, 1, 0.32, 1),
+    transform 320ms cubic-bezier(0.23, 1, 0.32, 1),
+    filter 320ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+.tip-enter-from {
+  opacity: 0;
+  transform: translateY(6px);
+  filter: blur(3px);
+}
+.tip-leave-to {
+  opacity: 0;
+  transform: translateY(-6px);
+  filter: blur(3px);
+}
+
+/* Reduced motion: keep the meaning (fade), drop the movement. */
+@media (prefers-reduced-motion: reduce) {
+  .provision-glow {
+    animation: none;
+    opacity: 0.35;
+  }
+  .tip-enter-active,
+  .tip-leave-active {
+    transition: opacity 200ms ease;
+  }
+  .tip-enter-from,
+  .tip-leave-to {
+    transform: none;
+    filter: none;
+  }
+}
+</style>
