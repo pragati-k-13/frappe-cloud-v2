@@ -258,20 +258,22 @@
             :action="{ label: 'Upgrade', onClick: upgrade }"
           />
 
-          <!-- Same two cards as Central billing (minus the wallet-history chevron). -->
+          <!-- Same two cards as Central billing (minus the wallet-history chevron).
+               On trial neither card carries a footer (no budget alert or actions
+               until billing is set up), so both stay symmetric three-line stats. -->
           <div class="grid gap-4 sm:grid-cols-2">
             <!-- Estimated this cycle — the exact card from Central billing. -->
             <section class="flex flex-col rounded-xl border border-outline-gray-2 bg-surface-elevation-1 p-5">
               <span class="text-sm text-ink-gray-5">Estimated this cycle</span>
               <div class="mt-1.5 text-2xl font-semibold tabular-nums text-ink-gray-9">{{ money(store.estimatedThisCycle) }}</div>
               <div class="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
-                <span class="text-ink-gray-5">Day {{ daysElapsed }} of {{ cycleDays }} · bills {{ billingDueDate }}</span>
+                <span class="text-ink-gray-5">{{ billingTiming }}</span>
                 <span v-if="store.estimateDeltaPct" class="inline-flex items-center gap-0.5 font-medium" :class="deltaUp ? 'text-ink-amber-8' : 'text-ink-green-6'">
                   <span class="size-3" :class="deltaUp ? 'lucide-arrow-up' : 'lucide-arrow-down'" />
                   {{ Math.abs(store.estimateDeltaPct) }}% vs last month
                 </span>
               </div>
-              <Button class="mt-auto -ml-2 self-start" :class="budgetCrossed ? '!text-ink-red-8' : budgetNear ? '!text-ink-amber-8' : ''" variant="ghost" size="xs" icon-left="lucide-bell" :label="budgetStateText" @click="openBudget" />
+              <Button v-if="hasMethod" class="mt-auto -ml-2 self-start" :class="budgetCrossed ? '!text-ink-red-8' : budgetNear ? '!text-ink-amber-8' : ''" variant="ghost" size="xs" icon-left="lucide-bell" :label="budgetStateText" @click="openBudget" />
             </section>
 
             <!-- Credit balance — coverage status, then Add credit + auto-recharge,
@@ -419,7 +421,7 @@ import AppIcon from './AppIcon.vue'
 import ConfirmDialog from './ConfirmDialog.vue'
 import PaymentSetupDialog from './PaymentSetupDialog.vue'
 import UpdateServerDialog from './UpdateServerDialog.vue'
-import { CYCLE_DAYS, useCloudStore } from '../stores/cloud'
+import { useCloudStore } from '../stores/cloud'
 import { money as fmtMoney } from '../utils/format'
 import { APP_CATALOG, APP_CATEGORIES, categoryOf, planById, versionById } from '../data/catalog'
 
@@ -458,11 +460,16 @@ const coverNote = computed(() => (covers.value ? 'Covers this month' : "Won't co
 
 // — Estimate card (mirrors Central's "Estimated this cycle"): cycle position,
 // the month-over-month delta, and the budget-alert threshold state.
-const cycleDays = CYCLE_DAYS
-const daysElapsed = Math.min(new Date().getDate(), CYCLE_DAYS)
-const billingDueDate = computed(() => {
-  const d = new Date()
-  return new Date(d.getFullYear(), d.getMonth() + 1, 1).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
+// Time until the next bill — accurate whatever day this server joined the cycle.
+// A "day N of 30" count overstates usage for a mid-cycle start (the estimate is
+// already prorated), so we show the bill date and how long until it instead.
+const billingTiming = computed(() => {
+  const now = new Date()
+  const due = new Date(now.getFullYear(), now.getMonth() + 1, 1)
+  const days = Math.max(0, Math.ceil((due - now) / 86400000))
+  const date = due.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
+  if (days === 0) return 'Bills today'
+  return `Bills ${date} · ${days} day${days === 1 ? '' : 's'} left`
 })
 const deltaUp = computed(() => store.estimateDeltaPct > 0)
 const budgetCrossed = computed(() => !!store.budgetAlert && store.estimatedThisCycle >= store.budgetAlert)

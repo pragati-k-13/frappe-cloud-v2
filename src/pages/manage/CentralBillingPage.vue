@@ -29,16 +29,20 @@
               <!-- Estimated this cycle — the stat, with the budget alert as a quiet
                    footer line since the alert is what watches this number. -->
               <section class="flex flex-col rounded-xl border border-outline-gray-2 bg-surface-elevation-1 p-5">
-                <span class="text-sm text-ink-gray-5">Estimated this cycle</span>
+                <!-- Match the Wallet card's header height (its chevron makes that row
+                     24px tall) so both cards' three lines line up row-for-row. -->
+                <div class="flex h-6 items-center">
+                  <span class="text-sm text-ink-gray-5">Estimated this cycle</span>
+                </div>
                 <div class="mt-1.5 text-2xl font-semibold tabular-nums text-ink-gray-9">{{ inr(store.estimatedThisCycle) }}</div>
                 <div class="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
-                  <span class="text-ink-gray-5">Day {{ daysElapsed }} of {{ cycleDays }} · bills {{ billingDueDate }}</span>
+                  <span class="text-ink-gray-5">{{ billingTiming }}</span>
                   <span v-if="store.estimateDeltaPct" class="inline-flex items-center gap-0.5 font-medium" :class="deltaUp ? 'text-ink-amber-8' : 'text-ink-green-6'">
                     <span class="size-3" :class="deltaUp ? 'lucide-arrow-up' : 'lucide-arrow-down'" />
                     {{ Math.abs(store.estimateDeltaPct) }}% vs last month
                   </span>
                 </div>
-                <Button class="mt-auto -ml-2 self-start" :class="budgetCrossed ? '!text-ink-red-8' : budgetNear ? '!text-ink-amber-8' : ''" variant="ghost" size="xs" icon-left="lucide-bell" :label="budgetStateText" @click="openBudget" />
+                <Button v-if="hasMethod" class="mt-auto -ml-2 self-start" :class="budgetCrossed ? '!text-ink-red-8' : budgetNear ? '!text-ink-amber-8' : ''" variant="ghost" size="xs" icon-left="lucide-bell" :label="budgetStateText" @click="openBudget" />
               </section>
 
               <!-- Wallet — balance + how this cycle gets covered, plus auto-recharge
@@ -60,20 +64,23 @@
                 </div>
                 <!-- Balance -->
                 <div class="mt-1.5 text-2xl font-semibold tabular-nums text-ink-gray-9">{{ inr(store.walletBalance) }}</div>
-                <!-- Funding footer: coverage status, then the two funding actions paired -->
-                <div class="mt-auto space-y-2.5 pt-4">
-                  <p v-if="walletAtRisk" class="flex items-center gap-1.5 text-xs text-ink-red-8">
-                    <span class="lucide-triangle-alert size-3.5 shrink-0" />
-                    Won't cover the {{ inr(store.estimatedThisCycle) }} invoice
-                  </p>
-                  <p v-else-if="walletShort" class="flex items-center gap-1.5 text-xs text-ink-gray-5">
-                    <span class="lucide-credit-card size-3.5 shrink-0 text-ink-gray-4" />
-                    Card covers the {{ inr(walletShortfall) }} over your balance
-                  </p>
-                  <div class="flex items-center justify-between gap-2">
-                    <Button class="-ml-2" variant="ghost" size="xs" :label="store.autoRecharge ? 'Auto-recharge on' : 'Auto-recharge off'" icon-left="lucide-zap" @click="openRecharge" />
-                    <Button variant="subtle" size="sm" label="Add credit" icon-left="lucide-plus" @click="creditOpen = true" />
-                  </div>
+                <!-- Coverage status, right under the balance — always the third line -->
+                <p v-if="walletAtRisk" class="mt-1.5 flex items-center gap-1.5 text-xs text-ink-red-8">
+                  <span class="lucide-triangle-alert size-3.5 shrink-0" />
+                  Won't cover the {{ inr(store.estimatedThisCycle) }} invoice
+                </p>
+                <p v-else-if="walletShort" class="mt-1.5 flex items-center gap-1.5 text-xs text-ink-gray-5">
+                  <span class="lucide-credit-card size-3.5 shrink-0 text-ink-gray-4" />
+                  Card covers the {{ inr(walletShortfall) }} over your balance
+                </p>
+                <p v-else class="mt-1.5 flex items-center gap-1.5 text-xs text-ink-gray-5">
+                  <span class="lucide-circle-check size-3.5 shrink-0 text-ink-green-6" />
+                  Covers the {{ inr(store.estimatedThisCycle) }} invoice
+                </p>
+                <!-- Funding actions, paired — only once there's a method to charge -->
+                <div v-if="hasMethod" class="mt-auto flex items-center justify-between gap-2 pt-4">
+                  <Button class="-ml-2" variant="ghost" size="xs" :label="store.autoRecharge ? 'Auto-recharge on' : 'Auto-recharge off'" icon-left="lucide-zap" @click="openRecharge" />
+                  <Button variant="subtle" size="sm" label="Add credit" icon-left="lucide-plus" @click="creditOpen = true" />
                 </div>
               </div>
             </div>
@@ -552,7 +559,7 @@ import PaymentSetupDialog from '../../components/PaymentSetupDialog.vue'
 import CentralShell from '../../components/CentralShell.vue'
 import EmptyState from '../../components/EmptyState.vue'
 import { TAX_REGION_OPTIONS, taxRegionByCode } from '../../data/tax'
-import { CYCLE_DAYS, useCloudStore } from '../../stores/cloud'
+import { useCloudStore } from '../../stores/cloud'
 import { inr, usd } from '../../utils/format'
 import { validateEmail, validateTaxId } from '../../utils/validate'
 
@@ -601,6 +608,9 @@ const budgetOverBy = computed(() => Math.max(0, store.estimatedThisCycle - (stor
 // state is worth noticing.
 const walletShort = computed(() => store.walletBalance < store.estimatedThisCycle)
 const walletShortfall = computed(() => Math.max(0, store.estimatedThisCycle - store.walletBalance))
+// Until there's a method to charge, the funding actions and budget alert stay
+// hidden — the page's job is to get a method added first (mirrors the Desk modal).
+const hasMethod = computed(() => store.paymentMethods.length > 0)
 // Budget alert line — states the relationship to the estimate, not just the raw
 // threshold, so the number means something at a glance.
 const budgetStateText = computed(() => {
@@ -721,11 +731,16 @@ watch(view, () => {
 })
 
 // — Cycle figures: where we are in the 30-day cycle and when it bills.
-const cycleDays = CYCLE_DAYS
-const daysElapsed = Math.min(new Date().getDate(), CYCLE_DAYS)
-const billingDueDate = computed(() => {
-  const d = new Date()
-  return new Date(d.getFullYear(), d.getMonth() + 1, 1).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
+// Time until the next bill — accurate whatever day the account joined the cycle.
+// A "day N of 30" count overstates usage for a mid-cycle start (the estimate is
+// already prorated), so we show the bill date and how long until it instead.
+const billingTiming = computed(() => {
+  const now = new Date()
+  const due = new Date(now.getFullYear(), now.getMonth() + 1, 1)
+  const days = Math.max(0, Math.ceil((due - now) / 86400000))
+  const date = due.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
+  if (days === 0) return 'Bills today'
+  return `Bills ${date} · ${days} day${days === 1 ? '' : 's'} left`
 })
 const deltaUp = computed(() => store.estimateDeltaPct > 0)
 
