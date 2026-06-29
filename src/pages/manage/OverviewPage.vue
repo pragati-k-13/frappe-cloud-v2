@@ -15,13 +15,13 @@
             :action="{ label: 'Add a card', onClick: () => (addCardOpen = true) }"
             class="mb-5"
           >
-            <template #description>Nothing is deleted. Add a card and they're back in seconds, exactly as they were.</template>
+            <template #description>Nothing is deleted. Add a card and they're back in seconds.</template>
           </Alert>
 
           <!-- Server lifecycle banners. Independent v-if from creditExpired (both can
                be true); the three statuses are mutually exclusive so they chain. -->
           <Alert v-if="server.status === 'suspended'" theme="yellow" title="This server is suspended" :action="{ label: 'Resume server', onClick: resumeServer }" class="mb-5">
-            <template #description>Billing was stopped, so its sites are offline. Resume to bring them back — nothing is deleted.</template>
+            <template #description>Sites are offline. Resume to bring them back — nothing is deleted.</template>
           </Alert>
 
           <Alert v-else-if="server.status === 'broken'" theme="red" title="This server is unreachable" :action="{ label: 'Contact support', icon: 'lucide-life-buoy', onClick: contactSupport }" class="mb-5">
@@ -59,7 +59,7 @@
             class="mt-4"
             :icon="q || statusFilter ? 'lucide-search' : 'lucide-layout-grid'"
             :title="q || statusFilter ? 'No sites match' : 'No sites on this server yet'"
-            :description="q || statusFilter ? 'Try a different search or clear the filter.' : 'Create your first site to get started.'"
+            :description="q || statusFilter ? 'Try a different search or clear the filter.' : 'Create your first site.'"
           >
             <Button v-if="!q && !statusFilter && server.status === 'active'" variant="solid" size="sm" label="New site" icon-left="lucide-plus" @click="newSiteOpen = true" />
           </EmptyState>

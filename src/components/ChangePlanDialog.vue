@@ -38,7 +38,7 @@
                 <Badge v-if="isCurrent(p)" theme="gray" variant="outline" label="Current" size="sm" />
                 <Badge v-else-if="p.recommended" theme="green" variant="subtle" label="Recommended" size="sm" />
                 <template v-if="isSelected(p) && !isPlanAffordable(p.id)">
-                  <Tooltip text="This plan exceeds your credit — add billing details first.">
+                  <Tooltip text="Not enough credit — add billing first.">
                     <span class="lucide-alert-circle size-3.5 shrink-0 text-ink-red-8" />
                   </Tooltip>
                   <a
@@ -209,7 +209,7 @@
           <Button icon-left="lucide-arrow-left" label="Back" @click="step = 'choose'" />
           <Button
             variant="solid"
-            :label="scheduled ? 'Schedule plan change' : 'Migrate and change plan'"
+            :label="scheduled ? 'Schedule plan change' : 'Migrate'"
             :disabled="scheduled && (!scheduledDate || !scheduledTime || scheduledInPast)"
             @click="doMigrate"
           />

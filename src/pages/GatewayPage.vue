@@ -53,7 +53,7 @@
 
           <Button class="mt-4 w-full" variant="solid" size="lg" :loading="paying" :label="`Pay ${money(amount)}`" @click="pay" />
           <p class="mt-3 text-center text-p-xs text-ink-gray-5">
-            You can cancel anytime — you won't be charged until you confirm.
+            You won't be charged until you confirm.
           </p>
         </div>
 
@@ -66,7 +66,7 @@
         </button>
       </div>
 
-      <p class="mt-4 text-center text-p-xs text-ink-gray-5">Payments processed securely by Razorpay, Stripe &amp; PayPal</p>
+      <p class="mt-4 text-center text-p-xs text-ink-gray-5">Secured by Razorpay, Stripe &amp; PayPal</p>
     </div>
   </div>
 </template>

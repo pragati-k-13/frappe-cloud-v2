@@ -84,7 +84,7 @@
                     <span class="shrink-0 text-p-xs font-medium text-ink-green-6">{{ app.latest }}</span>
                   </template>
                 </div>
-                <div v-if="isFailed(app.key)" class="truncate text-p-sm text-ink-red-6">Install failed — couldn't build on this server</div>
+                <div v-if="isFailed(app.key)" class="truncate text-p-sm text-ink-red-6">Install failed — build error</div>
                 <div v-else class="truncate text-p-sm text-ink-gray-5">{{ app.tagline }}</div>
               </div>
 
@@ -254,7 +254,7 @@
           <Alert
             v-if="!health.ok"
             theme="yellow"
-            title="Your server is filling up"
+            title="Server nearly full"
             :action="{ label: 'Upgrade', onClick: upgrade }"
           />
 
@@ -302,7 +302,7 @@
               <span class="lucide-credit-card size-5 shrink-0 text-ink-gray-5" />
               <div class="min-w-0 flex-1">
                 <div class="text-base font-medium text-ink-gray-8">No payment method yet</div>
-                <p class="mt-0.5 text-p-sm text-ink-gray-5">You're on trial credit. Add a payment method to keep {{ site?.subdomain || 'your site' }} running after it.</p>
+                <p class="mt-0.5 text-p-sm text-ink-gray-5">Add a payment method to keep {{ site?.subdomain || 'your site' }} running after trial credit.</p>
               </div>
             </div>
             <Button class="mt-3" variant="solid" size="sm" label="Add payment method" icon-left="lucide-plus" @click="pmSetupOpen = true" />
@@ -316,7 +316,7 @@
             <div class="flex items-start justify-between gap-3 py-4">
               <div class="min-w-0">
                 <div class="text-base font-medium text-ink-gray-8">Open your server</div>
-                <p class="mt-0.5 text-p-sm text-ink-gray-5">Deploys, scaling, SSH, backups, and adding or changing sites — the full controls live on your server.</p>
+                <p class="mt-0.5 text-p-sm text-ink-gray-5">Deploys, scaling, SSH, backups, sites — the full server controls.</p>
               </div>
               <Button class="shrink-0" variant="subtle" size="sm" label="Open server" icon-right="lucide-arrow-up-right" @click="openServer" />
             </div>
@@ -324,7 +324,7 @@
             <div class="flex items-start justify-between gap-3 py-4">
               <div class="min-w-0">
                 <div class="text-base font-medium text-ink-gray-8">Account &amp; billing</div>
-                <p class="mt-0.5 text-p-sm text-ink-gray-5">Payment methods, invoices, billing email and your account settings — manage it all in one place.</p>
+                <p class="mt-0.5 text-p-sm text-ink-gray-5">Payment methods, invoices, billing email and account settings.</p>
               </div>
               <Button class="shrink-0" variant="subtle" size="sm" label="Manage account" icon-right="lucide-arrow-up-right" @click="openAccount" />
             </div>
@@ -377,7 +377,7 @@
   <Dialog v-model:open="rechargeOpen" size="sm">
     <template #title><span class="text-xl font-semibold text-ink-gray-9">Auto-recharge</span></template>
     <div class="space-y-3">
-      <p class="text-p-sm text-ink-gray-6">Keep the wallet topped up automatically so a low balance never interrupts service.</p>
+      <p class="text-p-sm text-ink-gray-6">Auto top-up so a low balance never interrupts service.</p>
       <FormControl v-model="rechargeForm.threshold" type="number" label="Top up when the balance drops below" placeholder="2000" />
       <FormControl v-model="rechargeForm.amount" type="number" label="Add this much each time" placeholder="5000" />
     </div>
@@ -406,7 +406,7 @@
     v-model:open="unlinkOpen"
     theme="red"
     :title="`Unlink ${pendingDomain?.name}?`"
-    :message="`${site?.name} will stop loading at ${pendingDomain?.name} and its SSL certificate is dropped. Remember to remove the DNS records at your provider too. You can re-add it anytime.`"
+    :message="`${site?.name} stops loading at ${pendingDomain?.name} and SSL is dropped. Remove the DNS records at your provider. You can re-add it anytime.`"
     confirm-label="Unlink domain"
     @confirm="doUnlink"
   />
@@ -456,7 +456,7 @@ const primaryMethodLabel = computed(() => {
 const balanceLabel = computed(() => (hasMethod.value ? 'Credit balance' : 'Trial credit'))
 const balanceValue = computed(() => (hasMethod.value ? store.walletBalance : store.creditDisplay))
 const covers = computed(() => balanceValue.value >= store.estimatedThisCycle)
-const coverNote = computed(() => (covers.value ? 'Covers this month' : "Won't cover this month"))
+const coverNote = computed(() => (covers.value ? 'Covers this month' : "Insufficient balance"))
 
 // — Estimate card (mirrors Central's "Estimated this cycle"): cycle position,
 // the month-over-month delta, and the budget-alert threshold state.
@@ -469,7 +469,7 @@ const billingTiming = computed(() => {
   const days = Math.max(0, Math.ceil((due - now) / 86400000))
   const date = due.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
   if (days === 0) return 'Bills today'
-  return `Bills ${date} · ${days} day${days === 1 ? '' : 's'} left`
+  return `Due ${date} · ${days}d left`
 })
 const deltaUp = computed(() => store.estimateDeltaPct > 0)
 const budgetCrossed = computed(() => !!store.budgetAlert && store.estimatedThisCycle >= store.budgetAlert)

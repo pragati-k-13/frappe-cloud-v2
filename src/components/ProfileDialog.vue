@@ -38,7 +38,7 @@
           <button class="text-ink-gray-5 hover:text-ink-gray-7" aria-label="Copy referral link" @click="copy(referralLink)"><span class="lucide-copy size-4" /></button>
         </div>
         <p class="mt-3 text-p-sm text-ink-gray-5">
-          Invite someone to Frappe Cloud and <span class="font-medium text-ink-gray-8">get $10 in Frappe Cloud credits</span> when they sign up and spend at least $25!
+          <span class="font-medium text-ink-gray-8">Get $10 in credits</span> when someone you invite signs up and spends $25.
         </p>
       </section>
     </div>

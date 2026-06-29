@@ -163,7 +163,7 @@ function run() {
   }
   // Read-only mode rejects anything that writes.
   if (readOnly.value && !/^\s*select/i.test(q)) {
-    queryError.value = 'ERROR 1290 (HY000): Read-only mode runs against a replica — only SELECT is allowed. Switch to read-write to modify data.'
+    queryError.value = 'ERROR 1290 (HY000): Read-only mode allows SELECT only. Switch to read-write to modify data.'
     return
   }
   const empty = /\blimit\s+0\b|\bwhere\s+1\s*=\s*0\b/i.test(q)

@@ -7,9 +7,9 @@
         :class="health.ok ? 'lucide-circle-check text-ink-green-6' : 'lucide-triangle-alert text-ink-amber-8'"
       />
       <span class="flex-1 text-sm font-medium text-ink-gray-8">
-        {{ health.ok ? 'Everything looks healthy' : 'Running a little hot' }}
+        {{ health.ok ? 'Healthy' : 'Running hot' }}
         <span class="ml-1 font-normal text-ink-gray-5">
-          {{ health.ok ? 'CPU, memory and disk are all comfortable.' : 'Worth a look — or a resize.' }}
+          {{ health.ok ? 'CPU, memory and disk all have headroom.' : 'Worth a look — or a resize.' }}
         </span>
       </span>
       <span
@@ -27,7 +27,7 @@
         <Progress :value="row.pct" size="sm" class="mt-2" />
       </div>
       <div class="flex items-center justify-between">
-        <p class="text-p-sm text-ink-gray-5">Backups don't count against your storage.</p>
+        <p class="text-p-sm text-ink-gray-5">Backups don't use your storage.</p>
         <Button variant="subtle" size="sm" label="Resize server" icon-left="lucide-scaling" @click="$emit('resize')" />
       </div>
     </div>

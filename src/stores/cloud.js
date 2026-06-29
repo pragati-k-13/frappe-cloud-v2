@@ -397,7 +397,7 @@ function grownState() {
     makeEvent(4 * DAY, "Couldn't install Frappe Insights on mycompany.frappe.cloud", {
       tag: 'app',
       status: 'failed',
-      detail: 'Insights needs more memory than the Starter plan had at the time. The server has since been resized — installing again will work.',
+      detail: 'Needs more memory than the Starter plan had. The server has since been resized — installing again will work.',
     }),
     makeEvent(5 * DAY, 'Resized your server from Starter to Business', { tag: 'server' }),
     makeEvent(12 * DAY, 'Created mycompany.frappe.cloud', { tag: 'site' }),
@@ -776,7 +776,7 @@ export const useCloudStore = defineStore('cloud', {
         if (live) live.status = 'live'
         this.flipActivity(actId, {
           title: `Moved ${site.name} to ${target.name}`,
-          detail: `Now running ${versionById(target.version).label}. The address didn't change — visitors never noticed.`,
+          detail: `Now running ${versionById(target.version).label}. Same address — no downtime for visitors.`,
         })
       }, 5000)
       return site
@@ -935,7 +935,7 @@ export const useCloudStore = defineStore('cloud', {
       if (this.currentSiteId === siteId) this.currentSiteId = srv.sites[0]?.id || null
       this.logActivity(`Deleted ${site.name}`, {
         tag: 'site',
-        detail: 'Its backups are kept for 30 days in case you need them back.',
+        detail: 'Backups kept for 30 days.',
       })
     },
 
@@ -1252,7 +1252,7 @@ export const useCloudStore = defineStore('cloud', {
       if (actId) {
         this.flipActivity(actId, {
           title: `Migrated ${srv.name} to ${toRegion.name}`,
-          detail: `Now running in ${toRegion.name} (${toRegion.provider}). Site URLs didn't change — visitors never noticed.`,
+          detail: `Now running in ${toRegion.name} (${toRegion.provider}). Same URLs — no downtime for visitors.`,
         })
       }
     },
@@ -1655,7 +1655,7 @@ export const useCloudStore = defineStore('cloud', {
         this.logActivity('Credit ran out — your sites are paused', {
           tag: 'billing',
           status: 'failed',
-          detail: 'Nothing is deleted. Add a card and your sites come back in seconds, exactly as they were.',
+          detail: 'Nothing is deleted. Add a card and your sites come back, exactly as they were.',
         })
       } else {
         this.logActivity('Sites are back up', { tag: 'billing' })

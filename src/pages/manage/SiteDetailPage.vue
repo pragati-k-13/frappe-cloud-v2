@@ -286,7 +286,7 @@
         <FormControl v-model="custom.frequency" type="select" label="Frequency" :options="frequencyOptions" />
         <FormControl v-if="custom.frequency === 'weekly'" v-model="custom.day" type="select" label="Day of week" :options="dayOptions" />
         <FormControl v-model="custom.hour" type="select" label="Time" :options="hourOptions" />
-        <p class="text-p-xs text-ink-gray-5">Backups are kept for 30 days. Times are in your account timezone.</p>
+        <p class="text-p-xs text-ink-gray-5">Kept 30 days. Times shown in your timezone.</p>
       </div>
       <template #actions>
         <div class="flex justify-end gap-2">
@@ -306,7 +306,7 @@
     <ConfirmDialog
       v-model:open="restoreOpen"
       title="Restore this backup?"
-      :message="`${site.name} goes back to ${pendingBackup ? fmtDateTime(pendingBackup.at) : ''} and will be unavailable for a minute while we restore it.`"
+      :message="`${site.name} reverts to ${pendingBackup ? fmtDateTime(pendingBackup.at) : ''}. Down for about a minute.`"
       confirm-label="Restore"
       @confirm="restore"
     />
@@ -321,7 +321,7 @@
       v-model:open="resetOpen"
       theme="red"
       title="Reset this site?"
-      :message="`${site.name}'s database is wiped back to a fresh install. We take a backup first, but all current data is removed. This can't be undone.`"
+      :message="`Wipes ${site.name}'s database to a fresh install. We back up first, but all data is removed. Can't be undone.`"
       confirm-label="Reset site"
       @confirm="resetSite"
     />
@@ -533,7 +533,7 @@ function restore() {
 
 // — Settings: friendly toggles
 const configOptions = [
-  { key: 'maintenance', label: 'Maintenance mode', desc: 'Visitors see a calm "back soon" page while you work.' },
+  { key: 'maintenance', label: 'Maintenance mode', desc: 'Visitors see a "back soon" page while you work.' },
   { key: 'scheduler', label: 'Background jobs', desc: 'Scheduled emails, reports and automations.' },
   { key: 'devMode', label: 'Developer mode', desc: 'Lets developers customise doctypes on this site.' },
 ]
@@ -584,7 +584,7 @@ function configMenu(c) {
 
 // — Site actions (the general actions that live at the site level)
 const siteActions = computed(() => [
-  { label: 'Clear cache', desc: 'Flush this site’s cache if something looks stale.', action: 'Clear', onClick: () => toast.success('Cache cleared') },
+  { label: 'Clear cache', desc: 'Clear this site’s cache if something looks stale.', action: 'Clear', onClick: () => toast.success('Cache cleared') },
   { label: 'Database users', desc: 'Manage who can connect to this site’s database.', action: 'Manage', onClick: () => toast('In the real thing, this manages database users') },
   { label: 'Email notifications', desc: 'Choose which alerts this site sends out.', action: 'Manage', onClick: () => toast('In the real thing, this opens notification settings') },
   { label: 'Transfer site', desc: 'Move this site to another team.', action: 'Transfer', onClick: () => toast('In the real thing, this starts a transfer') },

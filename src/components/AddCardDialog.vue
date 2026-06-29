@@ -38,7 +38,7 @@ function add() {
   open.value = false
   toast.promise(p, {
     loading: 'Adding card…',
-    success: 'Card added — billing takes over when your credit runs out',
+    success: 'Card added',
     error: 'Could not add card',
   })
 }

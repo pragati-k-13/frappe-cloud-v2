@@ -107,7 +107,7 @@ function ask(kind) {
         ? { title: `Resume ${s.name}?`, message: 'Its sites come back online.', theme: 'gray', label: 'Resume' }
         : { title: `Suspend ${s.name}?`, message: 'Its sites go offline until you resume. Nothing is deleted.', theme: 'gray', label: 'Suspend' }
   } else if (kind === 'duplicate') {
-    confirm.value = { title: `Duplicate ${s.name}?`, message: 'Creates a new server with the same plan, region and version.', theme: 'gray', label: 'Duplicate' }
+    confirm.value = { title: `Duplicate ${s.name}?`, message: 'Same plan, region and version.', theme: 'gray', label: 'Duplicate' }
   }
   confirmOpen.value = true
 }

@@ -130,7 +130,7 @@
             class="m-6"
             :icon="store.allServers.length ? 'lucide-search' : 'lucide-server'"
             :title="store.allServers.length ? 'No servers match' : 'No servers yet'"
-            :description="store.allServers.length ? 'Try a different search or clear the filters.' : 'Spin up your first server to host your sites.'"
+            :description="store.allServers.length ? 'Try a different search or clear the filters.' : 'Create your first server to host your sites.'"
           >
             <Button v-if="!store.allServers.length" variant="solid" size="sm" label="New server" icon-left="lucide-plus" @click="router.push('/servers/new')" />
           </EmptyState>

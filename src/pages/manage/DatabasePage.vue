@@ -88,7 +88,7 @@
         </div>
       </Disclosure>
 
-      <Disclosure title="Slow queries" :subtitle="`${DB.slowQueries.length} concerning · last 24h`" icon="lucide-timer">
+      <Disclosure title="Slow queries" :subtitle="`${DB.slowQueries.length} slow · last 24h`" icon="lucide-timer">
         <div class="space-y-3">
           <div v-for="(q, i) in DB.slowQueries" :key="i" class="rounded-lg border border-outline-gray-2 p-3">
             <code class="block truncate font-mono text-xs text-ink-gray-8">{{ q.digest }}</code>
@@ -114,7 +114,7 @@
           <div v-for="(ix, i) in DB.unusedIndexes" :key="`u${i}`" class="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-outline-gray-2 p-3">
             <div class="min-w-0">
               <div class="font-mono text-xs text-ink-gray-8">{{ ix.table }} · {{ ix.name }}</div>
-              <div class="mt-0.5 text-xs text-ink-gray-5">Unused ({{ ix.lastUsed }}) · {{ mb(ix.sizeMb) }} of dead weight</div>
+              <div class="mt-0.5 text-xs text-ink-gray-5">Unused since {{ ix.lastUsed }} · {{ mb(ix.sizeMb) }}</div>
             </div>
             <Button size="sm" variant="ghost" label="Drop" @click="toast.success(`Dropping ${ix.name}…`)" />
           </div>

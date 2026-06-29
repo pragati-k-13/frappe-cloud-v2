@@ -67,15 +67,15 @@
                 <!-- Coverage status, right under the balance — always the third line -->
                 <p v-if="walletAtRisk" class="mt-1.5 flex items-center gap-1.5 text-xs text-ink-red-8">
                   <span class="lucide-triangle-alert size-3.5 shrink-0" />
-                  Won't cover the {{ inr(store.estimatedThisCycle) }} invoice
+                  Insufficient balance
                 </p>
                 <p v-else-if="walletShort" class="mt-1.5 flex items-center gap-1.5 text-xs text-ink-gray-5">
                   <span class="lucide-credit-card size-3.5 shrink-0 text-ink-gray-4" />
-                  Card covers the {{ inr(walletShortfall) }} over your balance
+                  Card covers the rest
                 </p>
                 <p v-else class="mt-1.5 flex items-center gap-1.5 text-xs text-ink-gray-5">
                   <span class="lucide-circle-check size-3.5 shrink-0 text-ink-green-6" />
-                  Covers the {{ inr(store.estimatedThisCycle) }} invoice
+                  Covers this invoice
                 </p>
                 <!-- Funding actions, paired — only once there's a method to charge -->
                 <div v-if="hasMethod" class="mt-auto flex items-center justify-between gap-2 pt-4">
@@ -119,7 +119,7 @@
                 v-else
                 icon="lucide-credit-card"
                 title="No payment method yet"
-                description="Add a card or UPI to keep your servers running. We charge the primary first, then any backup."
+                description="Add a card or UPI to keep your servers running."
               >
                 <Button variant="solid" size="sm" label="Add payment method" icon-left="lucide-plus" @click="openPm" />
               </EmptyState>
@@ -140,7 +140,7 @@
               </dl>
               <button v-if="store.billingProfile.emailBounced" class="mt-2 flex items-center gap-1 text-xs text-ink-red-8 transition-colors hover:text-ink-red-8" @click="openContact">
                 <span class="lucide-triangle-alert size-3 shrink-0" />
-                Invoices are bouncing back — update your billing email.
+                Billing email is bouncing — update it.
               </button>
               <button v-if="taxMissing" class="mt-2 flex items-center gap-1 text-xs text-ink-amber-8 transition-colors hover:text-ink-amber-4" @click="openContact">
                 <span class="lucide-triangle-alert size-3 shrink-0" />
@@ -185,7 +185,7 @@
               <!-- Not a developer yet — a discoverable way in, not a buried feature. -->
               <template v-if="!isMarketplaceDeveloper">
                 <p class="mt-2 text-p-sm text-ink-gray-5">
-                  Publish an app on the Frappe Marketplace and earn a share of every subscription. Earnings show up here, withdrawable in USD.
+                  Publish an app and earn a share of every subscription. Paid out in USD.
                 </p>
                 <Button class="mt-3" variant="subtle" size="sm" label="Become a marketplace developer" icon-left="lucide-store" @click="becomeDeveloper" />
               </template>
@@ -205,7 +205,7 @@
                   Add a bank account to withdraw your earnings.
                 </p>
                 <p v-else-if="store.payoutBalance <= 0" class="mt-2 text-p-xs text-ink-gray-4">
-                  No earnings yet — they'll appear here once your published apps start earning.
+                  No earnings yet.
                 </p>
               </template>
             </section>
@@ -298,7 +298,7 @@
             class="mt-5"
             icon="lucide-receipt"
             title="No invoices yet"
-            description="Your first invoice appears here at the end of the billing cycle — we'll email a copy too."
+            description="Your first invoice appears here at the end of the cycle."
           />
         </template>
         </div>
@@ -357,6 +357,39 @@
                   <div class="flex justify-between font-semibold"><dt class="text-ink-gray-8">You'll pay</dt><dd class="tabular-nums text-ink-gray-9">{{ inr(total(openPanel.data) - walletApplyPreview) }}</dd></div>
                 </template>
               </dl>
+
+              <!-- Activity — this invoice's own history (issued → charged /
+                   declined → overdue → reminder). Timeline, newest first, with
+                   only the two latest events shown and the rest folded away. -->
+              <section class="-mx-4 space-y-3 border-t border-outline-gray-2 px-4 pt-4">
+                <h3 class="text-sm font-medium text-ink-gray-8">Activity</h3>
+                <ol class="relative">
+                  <li v-for="(e, i) in visibleActivity" :key="i" class="relative flex gap-3 pb-4 last:pb-0">
+                    <!-- Rail: one continuous line running through the column, with
+                         the solid dot sitting on top of it (no outline). The line
+                         is dropped on the last row so it doesn't dangle. -->
+                    <div class="relative flex w-2.5 shrink-0 justify-center">
+                      <span v-if="i < visibleActivity.length - 1" class="absolute left-1/2 top-2 h-[calc(100%+1rem)] w-px -translate-x-1/2 bg-[var(--outline-gray-2)]" />
+                      <span class="relative z-10 mt-1 size-2 shrink-0 rounded-full" :class="dotClass(e.tone)" />
+                    </div>
+                    <div class="min-w-0 flex-1">
+                      <div class="flex items-baseline justify-between gap-2">
+                        <span class="text-sm font-medium text-ink-gray-8">{{ e.label }}</span>
+                        <span class="shrink-0 tabular-nums text-p-xs text-ink-gray-5">{{ e.at }}</span>
+                      </div>
+                      <p v-if="e.detail" class="mt-0.5 text-p-sm text-ink-gray-5">{{ e.detail }}</p>
+                    </div>
+                  </li>
+                </ol>
+                <button
+                  v-if="activityEvents.length > 2"
+                  class="flex items-center gap-1 text-p-sm font-medium text-ink-gray-6 transition-colors hover:text-ink-gray-8"
+                  @click="activityExpanded = !activityExpanded"
+                >
+                  <span class="size-3.5" :class="activityExpanded ? 'lucide-chevron-up' : 'lucide-chevron-down'" />
+                  {{ activityExpanded ? 'Show less' : `Show ${activityEvents.length - 2} earlier event${activityEvents.length - 2 === 1 ? '' : 's'}` }}
+                </button>
+              </section>
             </div>
 
             <div class="border-t border-outline-gray-2 p-4">
@@ -497,7 +530,7 @@
     <!-- Budget alert -->
     <Dialog v-model:open="budgetOpen" size="sm">
       <template #title><span class="text-xl font-semibold text-ink-gray-9">Set a budget alert</span></template>
-      <FormControl v-model="budget" type="number" label="Alert me when the cycle estimate exceeds (₹)" placeholder="20000" />
+      <FormControl v-model="budget" type="number" label="Alert me above (₹)" placeholder="20000" />
       <template #actions>
         <div class="flex justify-end gap-2">
           <Button label="Cancel" @click="budgetOpen = false" />
@@ -526,7 +559,7 @@
     <Dialog v-model:open="rechargeOpen" size="sm">
       <template #title><span class="text-xl font-semibold text-ink-gray-9">Auto-recharge</span></template>
       <div class="space-y-3">
-        <p class="text-p-sm text-ink-gray-6">Keep the wallet topped up automatically so a low balance never interrupts service.</p>
+        <p class="text-p-sm text-ink-gray-6">Auto top-up so a low balance never interrupts service.</p>
         <FormControl v-model="rechargeForm.threshold" type="number" label="Top up when wallet drops below (₹)" placeholder="2000" />
         <FormControl v-model="rechargeForm.amount" type="number" label="Add this much each time (₹)" placeholder="5000" />
       </div>
@@ -545,6 +578,16 @@
     <CancelSubscriptionDialog v-model:open="cancelOpen" />
 
     <AddCardDialog v-model:open="addCardOpen" />
+
+    <!-- Shared confirm gate for serious actions (pause billing, remove a method) -->
+    <ConfirmDialog
+      v-model:open="confirmOpen"
+      :title="confirmCfg.title"
+      :message="confirmCfg.message"
+      :theme="confirmCfg.theme"
+      :confirm-label="confirmCfg.label"
+      @confirm="runConfirm"
+    />
   </CentralShell>
 </template>
 
@@ -555,6 +598,7 @@ import { Badge, Button, Dialog, Dropdown, FormControl, Switch, Tooltip, toast } 
 import Alert from '../../components/Alert.vue'
 import AddCardDialog from '../../components/AddCardDialog.vue'
 import CancelSubscriptionDialog from '../../components/CancelSubscriptionDialog.vue'
+import ConfirmDialog from '../../components/ConfirmDialog.vue'
 import PaymentSetupDialog from '../../components/PaymentSetupDialog.vue'
 import CentralShell from '../../components/CentralShell.vue'
 import EmptyState from '../../components/EmptyState.vue'
@@ -639,7 +683,7 @@ const billingBanner = computed(() => {
       key: 'no-method',
       theme: 'red',
       title: 'No working payment method',
-      description: 'Every method was declined. Add a working one to avoid suspension.',
+      description: 'All methods declined. Add a working one to avoid suspension.',
       action: { label: 'Update payment method', onClick: openPm },
     }
   if (overdueInvoice.value)
@@ -762,14 +806,67 @@ const walletApplyPreview = computed(() => {
   return Math.min(store.walletBalance, total(inv))
 })
 
+// — Invoice activity (the docked panel's history timeline). Derived from the
+// invoice's own fields so every invoice gets a coherent log without storing it
+// twice; the API will return real events here later. Tone drives the dot colour:
+// green = settled, red = a failed/overdue step, gray = neutral.
+const primaryMethod = computed(
+  () => store.paymentMethods.find((p) => p.primary) || store.paymentMethods[0] || null,
+)
+const primaryMethodLabel = computed(() =>
+  primaryMethod.value ? `${primaryMethod.value.label} ${primaryMethod.value.detail}` : 'your payment method',
+)
+function buildActivity(inv) {
+  const recipient = store.billingProfile.invoiceRecipient || store.billingProfile.billingEmail || store.user.email
+  const card = primaryMethodLabel.value
+  // Built oldest-first, then reversed so the newest event leads.
+  const events = [
+    { label: 'Invoice issued', detail: `Generated for ${inv.period} usage`, at: inv.issued, tone: 'neutral' },
+  ]
+  if (inv.status === 'Paid') {
+    events.push({ label: 'Payment received', detail: `${inr(total(inv))} charged to ${card}`, at: inv.issued, tone: 'success' })
+  } else if (inv.status === 'Unpaid' || inv.overdue) {
+    events.push({ label: 'Payment failed', detail: `${card} was declined`, at: '2 Jun 2026', tone: 'failed' })
+    if (inv.overdue)
+      events.push({ label: 'Marked overdue', detail: `Payment due ${inv.dueDate} wasn't received`, at: inv.dueDate, tone: 'failed' })
+    events.push({ label: 'Reminder sent', detail: `Payment reminder emailed to ${recipient}`, at: '9 Jun 2026', tone: 'neutral' })
+  }
+  return events.reverse()
+}
+const activityEvents = computed(() =>
+  openPanel.value?.type === 'invoice' ? buildActivity(openPanel.value.data) : [],
+)
+const activityExpanded = ref(false)
+const visibleActivity = computed(() =>
+  activityExpanded.value ? activityEvents.value : activityEvents.value.slice(0, 2),
+)
+// Reset the fold whenever a different invoice (or the wallet) opens.
+watch(() => openPanel.value?.data?.number, () => { activityExpanded.value = false })
+function dotClass(tone) {
+  if (tone === 'success') return 'bg-[var(--ink-green-7)]'
+  if (tone === 'failed') return 'bg-[var(--ink-red-7)]'
+  return 'bg-[var(--ink-gray-4)]'
+}
+
 // — Subscriptions (one per server) — open the server or pause/resume just it.
 // Each server opens in its own tab.
 function goServer(id) {
   window.open(`/manage/${id}`, '_blank', 'noopener')
 }
 function toggleServerBilling(srv, suspend) {
-  store.setServerSuspended(srv.id, suspend)
-  toast.success(suspend ? `${srv.name} paused` : `${srv.name} resumed`)
+  // Resuming is safe and instant; pausing takes the server's sites offline, so confirm.
+  if (!suspend) {
+    store.setServerSuspended(srv.id, false)
+    toast.success(`${srv.name} resumed`)
+    return
+  }
+  askConfirm(
+    { title: `Pause billing for ${srv.name}?`, message: 'Its sites go offline until you resume. Nothing is deleted.', theme: 'gray', label: 'Pause billing' },
+    () => {
+      store.setServerSuspended(srv.id, true)
+      toast.success(`${srv.name} paused`)
+    },
+  )
 }
 function subMenu(srv) {
   return [
@@ -806,8 +903,41 @@ function pmMenu(pm) {
   const opts = []
   opts.push({ label: 'Update', icon: 'lucide-pencil', onClick: () => updatePm(pm) })
   if (!pm.primary) opts.push({ label: 'Make primary', icon: 'lucide-star', onClick: () => store.setPrimaryMethod(pm.id) })
-  opts.push({ label: 'Remove', icon: 'lucide-trash-2', onClick: () => store.removePaymentMethod(pm.id) })
+  opts.push({ label: 'Remove', icon: 'lucide-trash-2', onClick: () => askRemovePm(pm) })
   return opts
+}
+function askRemovePm(pm) {
+  // Warn harder when it's the last method that can actually be charged.
+  const onlyWorking = store.paymentMethods.filter((p) => p.status !== 'declined').length <= 1
+  askConfirm(
+    {
+      title: 'Remove payment method?',
+      message: onlyWorking
+        ? "This is your only working method — remove it and we can't bill you, so sites may pause."
+        : 'Charges will use your other method. You can re-add it anytime.',
+      theme: 'red',
+      label: 'Remove',
+    },
+    () => {
+      store.removePaymentMethod(pm.id)
+      toast.success('Payment method removed')
+    },
+  )
+}
+
+// — Confirm gate shared by the serious billing actions above.
+const confirmOpen = ref(false)
+const confirmCfg = ref({ title: '', message: '', theme: 'gray', label: 'Confirm' })
+let confirmFn = null
+function askConfirm(cfg, fn) {
+  confirmCfg.value = cfg
+  confirmFn = fn
+  confirmOpen.value = true
+}
+function runConfirm() {
+  const fn = confirmFn
+  confirmFn = null
+  fn && fn()
 }
 
 // — Wallet
@@ -859,7 +989,7 @@ const isMarketplaceDeveloper = computed(
 )
 function becomeDeveloper() {
   store.becomeMarketplaceDeveloper()
-  toast.success("You're a marketplace developer — publish an app to start earning")
+  toast.success("You're a marketplace developer")
 }
 function savePayoutAccount() {
   store.setPayoutAccount(true)

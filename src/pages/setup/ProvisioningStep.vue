@@ -85,7 +85,7 @@ const pins = computed(() => {
 const tips = [
   'Install apps from the Marketplace in a few clicks.',
   'Run multiple sites and apps on a single server.',
-  'Add your own domain anytime — SSL is issued and renewed for you.',
+  'Add your own domain anytime — SSL included.',
   'Daily backups run automatically — restore your site to any point.',
   'Download a full copy of your site anytime — your data is always yours.',
 ]

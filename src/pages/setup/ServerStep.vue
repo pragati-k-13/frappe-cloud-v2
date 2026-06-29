@@ -111,7 +111,7 @@
         {{ allSizes ? 'Show fewer sizes' : `Show all ${PLANS.length} sizes` }}
       </button>
       <span class="text-ink-gray-4">·</span>
-      <span class="text-ink-gray-5">Whatever you pick, you can resize anytime.</span>
+      <span class="text-ink-gray-5">Resize anytime.</span>
     </div>
   </Dialog>
 </template>

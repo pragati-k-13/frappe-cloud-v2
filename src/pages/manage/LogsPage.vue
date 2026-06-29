@@ -1,7 +1,7 @@
 <template>
   <ServerShell v-if="server" :server="server" :crumbs="crumbs" roomy>
     <h1 class="text-xl font-semibold text-ink-gray-9">Logs</h1>
-    <p class="mt-1 text-p-base text-ink-gray-5">Output from {{ server.name }}'s services. Pick a file to tail.</p>
+    <p class="mt-1 text-p-base text-ink-gray-5">Output from {{ server.name }}'s services.</p>
 
     <div class="mt-5 flex h-[68vh] gap-4">
       <!-- File list — bordered cards, most-recently-written first, with their

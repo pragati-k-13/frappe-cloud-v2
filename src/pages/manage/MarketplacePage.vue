@@ -53,7 +53,7 @@
               <span class="truncate text-base font-medium text-ink-gray-8">{{ app.name }}</span>
               <span class="shrink-0 text-p-xs text-ink-gray-5">{{ app.version }}</span>
             </div>
-            <div v-if="isFailed(app.key)" class="truncate text-p-sm text-ink-red-6">Install failed — couldn't build on this server</div>
+            <div v-if="isFailed(app.key)" class="truncate text-p-sm text-ink-red-6">Install failed — build error</div>
             <div v-else class="truncate text-p-sm text-ink-gray-5">{{ app.tagline }}</div>
           </div>
 

@@ -15,7 +15,7 @@
 
     <template v-if="appUpdates.length">
       <div class="flex items-center justify-between gap-3">
-        <p class="text-p-sm text-ink-gray-5">We back up first — sites blip briefly.</p>
+        <p class="text-p-sm text-ink-gray-5">We back up first — brief downtime.</p>
         <button class="shrink-0 text-p-sm font-medium text-ink-gray-6 hover:text-ink-gray-8" @click="allSelected ? clear() : selectAll()">
           {{ allSelected ? 'Clear' : 'Select all' }}
         </button>
@@ -47,7 +47,7 @@
           :min="nowLocal"
           class="ml-6 rounded-md border border-outline-gray-2 bg-surface-elevation-1 px-2.5 py-1.5 text-p-sm text-ink-gray-8 focus:outline-none focus:ring-2 focus:ring-outline-gray-3"
         />
-        <Checkbox v-model="skipFailing" label="Skip failing patches if any" />
+        <Checkbox v-model="skipFailing" label="Skip failing patches" />
       </div>
     </template>
 

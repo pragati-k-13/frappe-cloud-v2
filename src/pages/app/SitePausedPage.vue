@@ -10,7 +10,7 @@
         </span>
         <h1 class="mt-4 text-xl font-semibold text-ink-gray-9">{{ site?.subdomain || 'Your site' }} is paused</h1>
         <p class="mx-auto mt-2 max-w-sm text-p-base text-ink-gray-6">
-          Your credit ran out, so we paused your site. Nothing is deleted — add credit and it's back in a few seconds, exactly as it was.
+          Out of credit, so we paused your site. Nothing is deleted — add credit and it's back in seconds, exactly as it was.
         </p>
         <Button
           class="mt-6"
@@ -20,7 +20,7 @@
           icon-left="lucide-zap"
           @click="resume"
         />
-        <p class="mt-3 text-p-xs text-ink-gray-5">You'll only be charged for what you use.</p>
+        <p class="mt-3 text-p-xs text-ink-gray-5">Pay only for what you use.</p>
       </div>
       <div class="mt-4 flex items-center justify-center gap-1.5 text-p-sm text-ink-gray-5">
         <img :src="cloudLogo" alt="" class="size-4 rounded" />

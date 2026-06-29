@@ -14,7 +14,7 @@
       </div>
 
       <div>
-        <div class="text-sm font-medium text-ink-gray-8">Here's exactly what happens</div>
+        <div class="text-sm font-medium text-ink-gray-8">What happens</div>
         <ul class="mt-2 space-y-2.5">
           <li v-for="item in whatHappens" :key="item.text" class="flex items-start gap-2.5 text-sm text-ink-gray-6">
             <span class="mt-0.5 size-4 shrink-0 text-ink-gray-5" :class="item.icon" />
@@ -63,7 +63,7 @@ const result = reactive({ suspended: [] })
 const whatHappens = [
   { icon: 'lucide-power', text: 'Your sites go offline immediately and show a maintenance page.' },
   { icon: 'lucide-receipt', text: 'Usage up to today is billed in your next invoice.' },
-  { icon: 'lucide-rotate-ccw', text: 'Resume anytime — everything comes back exactly as it was.' },
+  { icon: 'lucide-rotate-ccw', text: 'Resume anytime — everything comes back as it was.' },
   { icon: 'lucide-clock', text: 'Backups are kept for up to 30 days — resume before then to keep them.' },
 ]
 

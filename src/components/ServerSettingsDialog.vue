@@ -58,7 +58,7 @@
               <div class="flex items-center justify-between gap-3">
                 <div class="min-w-0 flex-1">
                   <div class="text-sm font-medium text-ink-gray-9">Restart server</div>
-                  <div class="mt-0.5 text-p-sm text-ink-gray-5">Reboots the machine. Sites are briefly unavailable while it comes back.</div>
+                  <div class="mt-0.5 text-p-sm text-ink-gray-5">Reboots the server. Brief downtime while it restarts.</div>
                 </div>
                 <Button class="shrink-0" variant="subtle" size="sm" label="Restart" icon-left="lucide-rotate-cw" @click="restart" />
               </div>
@@ -111,7 +111,7 @@
                     <div class="truncate text-sm font-medium text-ink-gray-9">{{ k.name }}</div>
                     <div class="truncate font-mono text-xs text-ink-gray-5">{{ k.fingerprint }}</div>
                   </div>
-                  <Button variant="ghost" size="sm" icon="lucide-trash-2" :aria-label="`Remove ${k.name}`" @click="store.removeAccountSshKey(k.id)" />
+                  <Button variant="ghost" size="sm" icon="lucide-trash-2" :aria-label="`Remove ${k.name}`" @click="askRemoveSshKey(k)" />
                 </div>
               </div>
               <EmptyState v-else class="mt-3" icon="lucide-key-round" title="No SSH keys yet" description="Add a public key to access your servers over SSH.">
@@ -131,7 +131,7 @@
                     <span class="min-w-0 flex-1 truncate text-sm text-ink-gray-8">{{ w.url }}</span>
                     <Badge :theme="w.status === 'failing' ? 'red' : 'green'" variant="subtle" :label="w.status === 'failing' ? 'Failing' : 'Active'" />
                     <Button v-if="w.status === 'failing'" variant="subtle" size="sm" label="Send test" @click="testHook(w)" />
-                    <Button variant="ghost" size="sm" icon="lucide-trash-2" aria-label="Remove webhook" @click="store.removeWebhook(w.id)" />
+                    <Button variant="ghost" size="sm" icon="lucide-trash-2" aria-label="Remove webhook" @click="askRemoveWebhook(w)" />
                   </div>
                   <p v-if="w.status === 'failing' && w.lastError" class="mt-1.5 flex items-center gap-1 pl-7 text-p-xs text-ink-red-8">
                     <span class="lucide-triangle-alert size-3 shrink-0" /> {{ w.lastError }} — check the endpoint, then send a test.
@@ -185,7 +185,7 @@
     theme="red"
     title="This can lock you out"
     message="Port 22 is how you reach this server over SSH. Removing or disabling this rule may cut off your access until you re-add it from another machine."
-    confirm-label="I understand, continue"
+    confirm-label="Remove rule"
     @confirm="confirmLockout"
   />
 
@@ -213,9 +213,18 @@
     v-model:open="regenOpen"
     theme="red"
     title="Regenerate the API secret?"
-    message="The current secret stops working immediately. Any script or integration using it will start failing until you update it with the new key."
+    message="The current secret stops working immediately. Scripts using it fail until you update them."
     confirm-label="Regenerate"
     @confirm="confirmRegenerate"
+  />
+
+  <ConfirmDialog
+    v-model:open="removeOpen"
+    theme="red"
+    :title="removeState.title"
+    :message="removeState.message"
+    confirm-label="Remove"
+    @confirm="onRemoveConfirm"
   />
 </template>
 
@@ -319,8 +328,28 @@ function testHook(w) {
   toast.promise(store.testWebhook(w.id), {
     loading: 'Sending test event…',
     success: 'Test delivered — webhook is healthy again',
-    error: 'Test failed — the endpoint still isn’t responding',
+    error: 'Test failed — endpoint not responding',
   })
+}
+
+// — Remove SSH key / webhook (confirm first; both are re-addable).
+const removeOpen = ref(false)
+const removeState = ref({ title: '', message: '' })
+let pendingRemove = null
+function askRemoveSshKey(k) {
+  removeState.value = { title: `Remove ${k.name}?`, message: 'Anything using this key loses SSH access. You can add it again anytime.' }
+  pendingRemove = () => { store.removeAccountSshKey(k.id); toast.success('SSH key removed') }
+  removeOpen.value = true
+}
+function askRemoveWebhook(w) {
+  removeState.value = { title: 'Remove webhook?', message: 'We stop sending events to this endpoint. You can add it again anytime.' }
+  pendingRemove = () => { store.removeWebhook(w.id); toast.success('Webhook removed') }
+  removeOpen.value = true
+}
+function onRemoveConfirm() {
+  const fn = pendingRemove
+  pendingRemove = null
+  fn && fn()
 }
 function copy(text) {
   navigator.clipboard?.writeText(text)

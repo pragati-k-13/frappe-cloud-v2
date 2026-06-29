@@ -6,7 +6,7 @@
 
     <p class="text-p-base text-ink-gray-6">
       This permanently deletes <span class="font-medium text-ink-gray-8">{{ site.name }}</span> and everything on
-      it. Backups are kept for 30 days, just in case.
+      it. Backups are kept for 30 days.
     </p>
 
     <FormControl

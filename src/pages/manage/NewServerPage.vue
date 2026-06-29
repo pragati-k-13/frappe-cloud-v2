@@ -46,7 +46,7 @@
             <div class="min-w-0 flex-1 pb-6">
               <div class="text-sm font-medium text-ink-gray-7">Select a provider</div>
               <div class="mt-2 grid grid-cols-3 gap-2 sm:grid-cols-5">
-                <Tooltip v-for="p in PROVIDERS" :key="p.id" :text="providerDown(p.id) ? `${p.name} is down right now` : ''">
+                <Tooltip v-for="p in PROVIDERS" :key="p.id" :text="providerDown(p.id) ? `${p.name} is down` : ''">
                   <button
                     class="flex w-full flex-col items-center gap-1.5 rounded-lg border p-2.5 transition-colors"
                     :class="providerDown(p.id)
@@ -72,7 +72,7 @@
             <div class="min-w-0 flex-1 pb-6">
               <div class="text-sm font-medium text-ink-gray-7">Select a region</div>
               <div class="mt-2 flex flex-wrap gap-2">
-                <Tooltip v-for="r in regions" :key="r.id" :text="regionDown(r.id) ? `${r.name} is at capacity right now` : ''">
+                <Tooltip v-for="r in regions" :key="r.id" :text="regionDown(r.id) ? `${r.name} is at capacity` : ''">
                   <button
                     class="flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm transition-colors"
                     :class="regionDown(r.id)

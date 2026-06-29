@@ -5,11 +5,10 @@
         <div class="mx-auto flex max-w-3xl flex-col gap-6 px-6 py-8">
           <!-- Header -->
           <div class="flex flex-col gap-1">
-            <h1 class="text-xl font-semibold text-ink-gray-9">Spending Limits</h1>
+            <h1 class="text-xl font-semibold text-ink-gray-9">Spending limits</h1>
             <p class="text-p-base text-ink-gray-5">
-              These determine your monthly spending limit on Frappe Cloud. You are
-              automatically moved to a higher tier once your usage and payment history
-              meet the qualifying conditions.
+              Your monthly spending limit. You move to a higher tier automatically as
+              your usage and payment history grow.
             </p>
           </div>
 
@@ -17,7 +16,7 @@
           <div class="rounded-lg border border-outline-gray-2 bg-surface-gray-1 p-4">
             <div class="flex flex-wrap items-center justify-between gap-3">
               <div class="flex flex-col gap-1">
-                <div class="text-sm text-ink-gray-6">Current subscribed amount</div>
+                <div class="text-sm text-ink-gray-6">Monthly spend</div>
                 <span class="text-xl font-semibold text-ink-gray-9">
                   {{ formatAmount(totalSubscribed) }}
                 </span>
@@ -44,7 +43,7 @@
                 <tr class="border-b border-outline-gray-2 bg-surface-gray-1">
                   <th class="px-4 py-3 text-base font-medium tracking-wide text-ink-gray-5">Tier</th>
                   <th class="px-4 py-3 text-base font-medium tracking-wide text-ink-gray-5">Requirements</th>
-                  <th class="px-4 py-3 text-right text-base font-medium tracking-wide text-ink-gray-5">Spending Limit</th>
+                  <th class="px-4 py-3 text-right text-base font-medium tracking-wide text-ink-gray-5">Spending limit</th>
                 </tr>
               </thead>
               <tbody class="divide-y divide-outline-gray-2">
@@ -106,19 +105,18 @@
                   three consecutive paid invoices.
                 </li>
                 <li>
-                  New teams start at the base tier with a default spending limit. Adding a
-                  payment method or buying prepaid credits is required to remain at or above
-                  the base tier.
+                  New teams start at the base tier. Add a payment method or prepaid
+                  credits to stay there.
                 </li>
                 <li>
-                  Need a higher limit immediately? Reach out to
+                  Need a higher limit now? Contact
                   <a
                     href="https://support.frappe.io"
                     target="_blank"
                     rel="noopener noreferrer"
                     class="text-ink-blue-8 underline underline-offset-2 transition-opacity hover:opacity-80"
                   >support</a>
-                  and we will review your account.
+                  and we'll review your account.
                 </li>
               </ul>
             </div>

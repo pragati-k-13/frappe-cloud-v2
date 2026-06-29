@@ -94,13 +94,13 @@ const serverHealth = computed(() => store.healthOf(ownServer.value))
 // The one fix-now billing problem worth a Desk banner, if any (decision 11).
 const deskAlert = computed(() => {
   if (store.paymentMethods.some((p) => p.status === 'declined')) {
-    return { theme: 'red', title: "A payment didn't go through", description: 'Update your payment method so your site keeps running.', action: 'Fix payment', tab: 'Billing' }
+    return { theme: 'red', title: "Payment failed", description: 'Update your payment method to keep your site running.', action: 'Fix payment', tab: 'Billing' }
   }
   if (store.isTrial && store.accountCredit <= LOW_CREDIT_THRESHOLD) {
-    return { theme: 'yellow', title: 'Your trial credit is running low', description: "Add a payment method to keep your site running once it's used up.", action: 'Set up billing', tab: 'Billing' }
+    return { theme: 'yellow', title: 'Trial credit running low', description: "Add a payment method before it runs out.", action: 'Set up billing', tab: 'Billing' }
   }
   if (!serverHealth.value.ok) {
-    return { theme: 'yellow', title: 'Your server is filling up', description: "It's close to its plan limits — upgrade to add headroom.", action: 'Review usage', tab: 'Billing' }
+    return { theme: 'yellow', title: 'Server nearly full', description: "Close to plan limits — upgrade for headroom.", action: 'Review usage', tab: 'Billing' }
   }
   return null
 })
